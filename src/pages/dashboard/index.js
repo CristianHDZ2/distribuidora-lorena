@@ -7,7 +7,7 @@ import useAuth from '../../hooks/useAuth'
 import styles from '../../styles/Dashboard.module.css'
 
 const Dashboard = () => {
-  const { user, isAdmin, isDespachador } = useAuth()
+  const { user, isAdmin, isDespachador, logout } = useAuth()
   const [dashboardStats, setDashboardStats] = useState({
     productos_total: 0,
     productos_bajo_stock: 0,
@@ -58,6 +58,12 @@ const Dashboard = () => {
     router.push(path)
   }
 
+  const handleLogout = async () => {
+    if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
+      await logout()
+    }
+  }
+
   return (
     <>
       <Head>
@@ -70,18 +76,18 @@ const Dashboard = () => {
           {/* Header de bienvenida */}
           <div className="row mb-4">
             <div className="col-12">
-              <div className="card border-0 bg-gradient-primary text-white">
+              <div className={`card border-0 ${styles.welcomeHeader}`}>
                 <div className="card-body p-4">
                   <div className="row align-items-center">
                     <div className="col-md-8">
-                      <h2 className="mb-1">
+                      <h2 className="mb-1 text-white">
                         {getGreeting()}, {user?.nombre_completo}
                       </h2>
-                      <p className="mb-0 opacity-75">
+                      <p className="mb-0 text-white opacity-75">
                         <i className="fas fa-user-tag me-2"></i>
-                        {user?.tipo_usuario === 'administrador' ? 'Administrador' : 'Despachador'}
+                        {user?.tipo_usuario === 'administrador' ? 'Administrador del Sistema' : 'Despachador'}
                       </p>
-                      <p className="mb-0 opacity-75">
+                      <p className="mb-0 text-white opacity-75">
                         <i className="fas fa-calendar me-2"></i>
                         {new Date().toLocaleDateString('es-SV', {
                           weekday: 'long',
@@ -92,16 +98,28 @@ const Dashboard = () => {
                       </p>
                     </div>
                     <div className="col-md-4 text-end">
-                      <div className="user-avatar">
-                        <img
-                          src={user?.foto_url || '/assets/images/default-user.png'}
-                          alt={user?.nombre_completo}
-                          className="rounded-circle"
-                          style={{ width: '80px', height: '80px', objectFit: 'cover' }}
-                          onError={(e) => {
-                            e.target.src = '/assets/images/default-user.png'
-                          }}
-                        />
+                      <div className="d-flex align-items-center justify-content-end gap-3">
+                        <div className="user-avatar">
+                          <img
+                            src={user?.foto_url || '/assets/images/default-user.png'}
+                            alt={user?.nombre_completo}
+                            className="rounded-circle"
+                            style={{ width: '80px', height: '80px', objectFit: 'cover' }}
+                            onError={(e) => {
+                              e.target.src = '/assets/images/default-user.png'
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <button 
+                            className="btn btn-outline-light btn-sm"
+                            onClick={handleLogout}
+                            title="Cerrar Sesión"
+                          >
+                            <i className="fas fa-sign-out-alt me-2"></i>
+                            Cerrar Sesión
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>

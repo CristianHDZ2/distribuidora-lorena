@@ -47,8 +47,33 @@
 }
 
 /* Gradiente para el header de bienvenida */
-.bg-gradient-primary {
+.welcomeHeader {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+}
+
+.welcomeHeader h2,
+.welcomeHeader p {
+  color: white !important;
+}
+
+.welcomeHeader .opacity-75 {
+  opacity: 0.75 !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+/* Botón de logout en el header */
+.welcomeHeader .btn-outline-light {
+  border-color: rgba(255, 255, 255, 0.5);
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.welcomeHeader .btn-outline-light:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: white;
+  color: white;
+  transform: translateY(-1px);
 }
 
 /* Animaciones */
