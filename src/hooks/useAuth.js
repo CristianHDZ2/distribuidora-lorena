@@ -190,7 +190,7 @@ export const AuthProvider = ({ children }) => {
 }
 
 // Hook para usar el contexto de autenticación
-const useAuth = () => {
+export const useAuth = () => {
   const context = useContext(AuthContext)
   
   if (!context) {
@@ -200,4 +200,5 @@ const useAuth = () => {
   return context
 }
 
+// Export default para mantener compatibilidad
 export default useAuth

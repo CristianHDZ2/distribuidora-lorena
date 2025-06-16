@@ -1,7 +1,7 @@
 import React from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import { useAuth } from '../../hooks/useAuth';
+import useAuth from '../../hooks/useAuth'; // Cambio aquí: import default en lugar de named import
 import ProtectedRoute from '../../components/Auth/ProtectedRoute';
 import ListaUsuarios from '../../components/Usuarios/ListaUsuarios';
 
@@ -54,13 +54,13 @@ const UsuariosPage = () => {
                                     type="button" 
                                     data-bs-toggle="dropdown"
                                 >
-                                    <i className="fas fa-cog"></i>
+                                    <i className="fas fa-cog me-1"></i>
+                                    Opciones
                                 </button>
                                 <ul className="dropdown-menu dropdown-menu-end">
                                     <li>
                                         <Link href="/dashboard" className="dropdown-item">
-                                            <i className="fas fa-tachometer-alt me-2"></i>
-                                            Dashboard
+                                            <i className="fas fa-home me-2"></i>Dashboard
                                         </Link>
                                     </li>
                                     <li><hr className="dropdown-divider" /></li>
@@ -68,13 +68,12 @@ const UsuariosPage = () => {
                                         <button 
                                             className="dropdown-item text-danger"
                                             onClick={() => {
-                                                if (confirm('¿Estás seguro de cerrar sesión?')) {
+                                                if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
                                                     window.location.href = '/login';
                                                 }
                                             }}
                                         >
-                                            <i className="fas fa-sign-out-alt me-2"></i>
-                                            Cerrar Sesión
+                                            <i className="fas fa-sign-out-alt me-2"></i>Cerrar Sesión
                                         </button>
                                     </li>
                                 </ul>
@@ -83,42 +82,53 @@ const UsuariosPage = () => {
                     </div>
                 </nav>
 
-                {/* Breadcrumb */}
-                <div className="container-fluid py-2 bg-white border-bottom">
-                    <nav aria-label="breadcrumb">
-                        <ol className="breadcrumb mb-0">
+                {/* Contenido principal */}
+                <main className="container-fluid p-4">
+                    {/* Breadcrumb */}
+                    <nav aria-label="breadcrumb" className="mb-4">
+                        <ol className="breadcrumb">
                             <li className="breadcrumb-item">
-                                <Link href="/dashboard" className="text-decoration-none">
-                                    <i className="fas fa-home"></i> Dashboard
-                                </Link>
+                                <Link href="/dashboard">Dashboard</Link>
                             </li>
                             <li className="breadcrumb-item active" aria-current="page">
-                                <i className="fas fa-users"></i> Usuarios
+                                Usuarios
                             </li>
                         </ol>
                     </nav>
-                </div>
 
-                {/* Contenido principal */}
-                <div className="container-fluid py-4">
-                    <ListaUsuarios />
-                </div>
-
-                {/* Footer */}
-                <footer className="bg-dark text-light py-3 mt-auto">
-                    <div className="container-fluid">
-                        <div className="row align-items-center">
-                            <div className="col-md-6">
-                                <small>© 2024 Distribuidora Lorena. Todos los derechos reservados.</small>
-                            </div>
-                            <div className="col-md-6 text-md-end">
-                                <small>
-                                    Sistema de Gestión v1.0 - Módulo de Usuarios
-                                </small>
+                    {/* Título y descripción */}
+                    <div className="row mb-4">
+                        <div className="col-12">
+                            <div className="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h1 className="h3 mb-1">
+                                        <i className="fas fa-users me-2 text-primary"></i>
+                                        Gestión de Usuarios
+                                    </h1>
+                                    <p className="text-muted mb-0">
+                                        Administra los usuarios del sistema
+                                    </p>
+                                </div>
+                                <div>
+                                    <button 
+                                        className="btn btn-primary"
+                                        onClick={() => window.location.href = '/usuarios/nuevo'}
+                                    >
+                                        <i className="fas fa-plus me-2"></i>
+                                        Nuevo Usuario
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </footer>
+
+                    {/* Componente de lista de usuarios */}
+                    <div className="row">
+                        <div className="col-12">
+                            <ListaUsuarios />
+                        </div>
+                    </div>
+                </main>
             </div>
         </ProtectedRoute>
     );

@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useAuth } from '../../hooks/useAuth';
+import useAuth from '../../hooks/useAuth'; // Cambio aquí: import default
 import ProtectedRoute from '../../components/Auth/ProtectedRoute';
 import FormularioUsuario from '../../components/Usuarios/FormularioUsuario';
 
 const DetalleUsuarioPage = () => {
-    const { user, token } = useAuth();
+    const { user } = useAuth(); // Obtenemos el usuario actual
     const router = useRouter();
     const { id } = router.query;
     
@@ -26,32 +26,107 @@ const DetalleUsuarioPage = () => {
         if (id) {
             cargarDatosUsuario();
         }
-    }, [id, token]);
+    }, [id]);
 
     const cargarDatosUsuario = async () => {
         try {
             setLoading(true);
             setError('');
             
-            const response = await fetch(`/api/usuarios/obtener_usuario.php?id=${id}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
+            // Por ahora usamos datos simulados hasta que tengamos la API
+            // const response = await fetch(`/api/usuarios/obtener_usuario.php?id=${id}`, {
+            //     headers: {
+            //         'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+            //     }
+            // });
+            
+            // Datos simulados para desarrollo
+            const usuariosSimulados = {
+                1: {
+                    id: 1,
+                    dui: '12345678-9',
+                    nombre_completo: 'Administrador Sistema',
+                    email: 'admin@distribuidora.com',
+                    telefono: '7777-7777',
+                    tipo_usuario: 'administrador',
+                    estado: 'activo',
+                    fecha_creacion: '2024-01-15',
+                    ultimo_acceso: '2024-06-16 10:30:00',
+                    direccion: 'San Salvador, El Salvador',
+                    fecha_nacimiento: '1985-05-15',
+                    foto_perfil: null
+                },
+                2: {
+                    id: 2,
+                    dui: '98765432-1',
+                    nombre_completo: 'Despachador Principal',
+                    email: 'despachador@distribuidora.com',
+                    telefono: '7888-8888',
+                    tipo_usuario: 'despachador',
+                    estado: 'activo',
+                    fecha_creacion: '2024-02-01',
+                    ultimo_acceso: '2024-06-16 09:15:00',
+                    direccion: 'Santa Ana, El Salvador',
+                    fecha_nacimiento: '1990-08-22',
+                    foto_perfil: null
+                },
+                3: {
+                    id: 3,
+                    dui: '11111111-1',
+                    nombre_completo: 'María García',
+                    email: 'maria@distribuidora.com',
+                    telefono: '7999-9999',
+                    tipo_usuario: 'despachador',
+                    estado: 'activo',
+                    fecha_creacion: '2024-03-15',
+                    ultimo_acceso: '2024-06-15 16:45:00',
+                    direccion: 'La Libertad, El Salvador',
+                    fecha_nacimiento: '1988-12-03',
+                    foto_perfil: null
                 }
-            });
-            
-            if (!response.ok) {
-                throw new Error('Error al cargar datos del usuario');
-            }
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                setUsuario(data.usuario);
-                setEstadisticas(data.estadisticas);
-                setActividadReciente(data.actividad_reciente || []);
+            };
+
+            const usuarioEncontrado = usuariosSimulados[id];
+            if (usuarioEncontrado) {
+                setUsuario(usuarioEncontrado);
+                
+                // Estadísticas simuladas
+                setEstadisticas({
+                    total_sesiones: 45,
+                    tiempo_total_sesiones: '25:30:00',
+                    ultima_actividad: usuarioEncontrado.ultimo_acceso,
+                    despachos_realizados: usuarioEncontrado.tipo_usuario === 'despachador' ? 12 : 0,
+                    rutas_asignadas: usuarioEncontrado.tipo_usuario === 'despachador' ? 3 : 0
+                });
+
+                // Actividad reciente simulada
+                setActividadReciente([
+                    {
+                        id: 1,
+                        accion: 'Inicio de sesión',
+                        descripcion: 'Usuario inició sesión en el sistema',
+                        fecha: '2024-06-16 10:30:00',
+                        ip: '192.168.1.100'
+                    },
+                    {
+                        id: 2,
+                        accion: 'Consulta inventario',
+                        descripcion: 'Consultó el inventario de productos',
+                        fecha: '2024-06-16 10:15:00',
+                        ip: '192.168.1.100'
+                    },
+                    {
+                        id: 3,
+                        accion: 'Cierre de sesión',
+                        descripcion: 'Usuario cerró sesión correctamente',
+                        fecha: '2024-06-15 17:45:00',
+                        ip: '192.168.1.100'
+                    }
+                ]);
             } else {
-                throw new Error(data.error || 'Error al cargar datos');
+                throw new Error('Usuario no encontrado');
             }
+            
         } catch (err) {
             setError(err.message);
         } finally {
@@ -66,37 +141,34 @@ const DetalleUsuarioPage = () => {
         }
 
         try {
-            const response = await fetch('/api/usuarios/eliminar_usuario.php', {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ id: usuario.id })
-            });
+            // Por ahora simulamos la eliminación
+            // const response = await fetch(`/api/usuarios/eliminar.php`, {
+            //     method: 'DELETE',
+            //     headers: {
+            //         'Content-Type': 'application/json',
+            //         'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+            //     },
+            //     body: JSON.stringify({ id: usuario.id })
+            // });
 
-            const data = await response.json();
-
-            if (data.success) {
-                setSuccess(data.message);
-                setTimeout(() => {
-                    router.push('/usuarios');
-                }, 2000);
-            } else {
-                throw new Error(data.error);
-            }
+            setSuccess('Usuario eliminado correctamente');
+            setTimeout(() => {
+                router.push('/usuarios');
+            }, 1500);
+            
         } catch (err) {
-            setError(err.message);
-            setTimeout(() => setError(''), 3000);
+            setError('Error al eliminar usuario: ' + err.message);
         }
     };
 
-    // Manejar éxito en formulario de edición
-    const handleFormularioSuccess = () => {
-        setMostrarFormularioEditar(false);
-        cargarDatosUsuario();
-        setSuccess('Usuario actualizado exitosamente');
-        setTimeout(() => setSuccess(''), 3000);
+    // Formatear fecha
+    const formatearFecha = (fecha) => {
+        return new Date(fecha).toLocaleDateString('es-SV');
+    };
+
+    // Formatear fecha y hora
+    const formatearFechaHora = (fechaHora) => {
+        return new Date(fechaHora).toLocaleString('es-SV');
     };
 
     // Obtener clase de badge para estado
@@ -109,60 +181,36 @@ const DetalleUsuarioPage = () => {
         return tipo === 'administrador' ? 'badge bg-primary' : 'badge bg-info';
     };
 
-    // Obtener clase para estado de conexión
-    const getBadgeConexion = (estadoConexion) => {
-        switch (estadoConexion) {
-            case 'En línea':
-                return 'badge bg-success';
-            case 'Hoy':
-                return 'badge bg-warning';
-            case 'Esta semana':
-                return 'badge bg-info';
-            default:
-                return 'badge bg-secondary';
-        }
-    };
-
-    // Obtener icono para tipo de actividad
-    const getIconoActividad = (tipo) => {
-        switch (tipo) {
-            case 'despacho':
-                return 'fas fa-truck text-primary';
-            case 'inventario':
-                return 'fas fa-boxes text-success';
-            default:
-                return 'fas fa-circle text-muted';
-        }
-    };
-
     if (loading) {
         return (
-            <ProtectedRoute requiredPermissions={['administrador']}>
-                <div className="min-vh-100 bg-light d-flex align-items-center justify-content-center">
+            <ProtectedRoute requiredPermissions={['manage_users']}>
+                <div className="min-vh-100 d-flex align-items-center justify-content-center">
                     <div className="text-center">
-                        <div className="spinner-border text-primary" role="status" style={{ width: '3rem', height: '3rem' }}>
+                        <div className="spinner-border text-primary" role="status">
                             <span className="visually-hidden">Cargando...</span>
                         </div>
-                        <p className="mt-3 text-muted">Cargando datos del usuario...</p>
+                        <p className="mt-2">Cargando datos del usuario...</p>
                     </div>
                 </div>
             </ProtectedRoute>
         );
     }
 
-    if (error && !usuario) {
+    if (error) {
         return (
-            <ProtectedRoute requiredPermissions={['administrador']}>
-                <div className="min-vh-100 bg-light d-flex align-items-center justify-content-center">
+            <ProtectedRoute requiredPermissions={['manage_users']}>
+                <Head>
+                    <title>Error - Distribuidora Lorena</title>
+                </Head>
+                <div className="min-vh-100 d-flex align-items-center justify-content-center">
                     <div className="text-center">
-                        <div className="alert alert-danger">
-                            <i className="fas fa-exclamation-triangle fa-2x mb-3"></i>
-                            <h5>Error al cargar usuario</h5>
-                            <p>{error}</p>
-                            <Link href="/usuarios" className="btn btn-primary">
-                                Volver a Lista de Usuarios
-                            </Link>
-                        </div>
+                        <i className="fas fa-exclamation-triangle text-danger fs-1 mb-3"></i>
+                        <h3 className="text-danger">Error al cargar usuario</h3>
+                        <p className="text-muted">{error}</p>
+                        <Link href="/usuarios" className="btn btn-primary">
+                            <i className="fas fa-arrow-left me-2"></i>
+                            Volver a Usuarios
+                        </Link>
                     </div>
                 </div>
             </ProtectedRoute>
@@ -170,10 +218,10 @@ const DetalleUsuarioPage = () => {
     }
 
     return (
-        <ProtectedRoute requiredPermissions={['administrador']}>
+        <ProtectedRoute requiredPermissions={['manage_users']}>
             <Head>
-                <title>{usuario ? `${usuario.nombre_completo} - Usuario` : 'Usuario'} - Distribuidora Lorena</title>
-                <meta name="description" content={`Detalles del usuario ${usuario?.nombre_completo || ''} en Distribuidora Lorena`} />
+                <title>{usuario?.nombre_completo} - Usuarios - Distribuidora Lorena</title>
+                <meta name="description" content={`Detalles del usuario ${usuario?.nombre_completo}`} />
             </Head>
 
             <div className="min-vh-100 bg-light">
@@ -215,19 +263,13 @@ const DetalleUsuarioPage = () => {
                                     type="button" 
                                     data-bs-toggle="dropdown"
                                 >
-                                    <i className="fas fa-cog"></i>
+                                    <i className="fas fa-cog me-1"></i>
+                                    Opciones
                                 </button>
                                 <ul className="dropdown-menu dropdown-menu-end">
                                     <li>
                                         <Link href="/dashboard" className="dropdown-item">
-                                            <i className="fas fa-tachometer-alt me-2"></i>
-                                            Dashboard
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link href="/usuarios" className="dropdown-item">
-                                            <i className="fas fa-users me-2"></i>
-                                            Lista de Usuarios
+                                            <i className="fas fa-home me-2"></i>Dashboard
                                         </Link>
                                     </li>
                                     <li><hr className="dropdown-divider" /></li>
@@ -235,13 +277,12 @@ const DetalleUsuarioPage = () => {
                                         <button 
                                             className="dropdown-item text-danger"
                                             onClick={() => {
-                                                if (confirm('¿Estás seguro de cerrar sesión?')) {
+                                                if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
                                                     window.location.href = '/login';
                                                 }
                                             }}
                                         >
-                                            <i className="fas fa-sign-out-alt me-2"></i>
-                                            Cerrar Sesión
+                                            <i className="fas fa-sign-out-alt me-2"></i>Cerrar Sesión
                                         </button>
                                     </li>
                                 </ul>
@@ -250,407 +291,250 @@ const DetalleUsuarioPage = () => {
                     </div>
                 </nav>
 
-                {/* Breadcrumb */}
-                <div className="container-fluid py-2 bg-white border-bottom">
-                    <nav aria-label="breadcrumb">
-                        <ol className="breadcrumb mb-0">
+                {/* Contenido principal */}
+                <main className="container-fluid p-4">
+                    {/* Breadcrumb */}
+                    <nav aria-label="breadcrumb" className="mb-4">
+                        <ol className="breadcrumb">
                             <li className="breadcrumb-item">
-                                <Link href="/dashboard" className="text-decoration-none">
-                                    <i className="fas fa-home"></i> Dashboard
-                                </Link>
+                                <Link href="/dashboard">Dashboard</Link>
                             </li>
                             <li className="breadcrumb-item">
-                                <Link href="/usuarios" className="text-decoration-none">
-                                    <i className="fas fa-users"></i> Usuarios
-                                </Link>
+                                <Link href="/usuarios">Usuarios</Link>
                             </li>
                             <li className="breadcrumb-item active" aria-current="page">
-                                <i className="fas fa-user"></i> {usuario?.nombre_completo || 'Usuario'}
+                                {usuario?.nombre_completo}
                             </li>
                         </ol>
                     </nav>
-                </div>
 
-                {/* Alertas */}
-                {error && (
-                    <div className="container-fluid pt-3">
+                    {/* Mensajes de estado */}
+                    {error && (
                         <div className="alert alert-danger alert-dismissible fade show" role="alert">
                             <i className="fas fa-exclamation-triangle me-2"></i>
                             {error}
                             <button type="button" className="btn-close" onClick={() => setError('')}></button>
                         </div>
-                    </div>
-                )}
-                
-                {success && (
-                    <div className="container-fluid pt-3">
+                    )}
+
+                    {success && (
                         <div className="alert alert-success alert-dismissible fade show" role="alert">
                             <i className="fas fa-check-circle me-2"></i>
                             {success}
                             <button type="button" className="btn-close" onClick={() => setSuccess('')}></button>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {/* Contenido principal */}
-                <div className="container-fluid py-4">
                     {usuario && (
                         <>
                             {/* Header del usuario */}
-                            <div className="row mb-4">
-                                <div className="col">
-                                    <div className="card shadow-sm">
-                                        <div className="card-body">
-                                            <div className="row align-items-center">
-                                                <div className="col-auto">
-                                                    {usuario.foto_perfil ? (
-                                                        <img
-                                                            src={`/api/uploads/usuarios/${usuario.foto_perfil}`}
-                                                            alt={usuario.nombre_completo}
-                                                            className="rounded-circle"
-                                                            style={{ width: '80px', height: '80px', objectFit: 'cover' }}
-                                                        />
-                                                    ) : (
-                                                        <div 
-                                                            className="bg-secondary rounded-circle d-flex align-items-center justify-content-center text-white"
-                                                            style={{ width: '80px', height: '80px' }}
-                                                        >
-                                                            <i className="fas fa-user fa-2x"></i>
-                                                        </div>
-                                                    )}
+                            <div className="card mb-4">
+                                <div className="card-body">
+                                    <div className="row align-items-center">
+                                        <div className="col-md-2 text-center">
+                                            {usuario.foto_perfil ? (
+                                                <img
+                                                    src={`/api/uploads/usuarios/${usuario.foto_perfil}`}
+                                                    alt="Foto de perfil"
+                                                    className="rounded-circle"
+                                                    style={{ width: '80px', height: '80px', objectFit: 'cover' }}
+                                                />
+                                            ) : (
+                                                <div
+                                                    className="rounded-circle bg-light d-flex align-items-center justify-content-center mx-auto"
+                                                    style={{ width: '80px', height: '80px' }}
+                                                >
+                                                    <i className="fas fa-user text-muted fs-3"></i>
                                                 </div>
-                                                <div className="col">
-                                                    <h2 className="mb-1">{usuario.nombre_completo}</h2>
-                                                    <div className="mb-2">
-                                                        <span className={getBadgeTipo(usuario.tipo_usuario) + ' me-2'}>
-                                                            {usuario.tipo_usuario === 'administrador' ? 'Administrador' : 'Despachador'}
-                                                        </span>
-                                                        <span className={getBadgeEstado(usuario.estado) + ' me-2'}>
-                                                            {usuario.estado}
-                                                        </span>
-                                                        <span className={getBadgeConexion(usuario.estado_conexion)}>
-                                                            {usuario.estado_conexion}
-                                                        </span>
-                                                    </div>
-                                                    <div className="text-muted">
-                                                        <i className="fas fa-id-card me-2"></i>
-                                                        DUI: <code>{usuario.dui}</code>
-                                                        <span className="mx-3">
-                                                            <i className="fas fa-envelope me-2"></i>
-                                                            {usuario.email}
-                                                        </span>
-                                                        <span>
-                                                            <i className="fas fa-phone me-2"></i>
-                                                            {usuario.telefono}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div className="col-auto">
-                                                    <div className="btn-group" role="group">
-                                                        <button
-                                                            className="btn btn-outline-warning"
-                                                            onClick={() => setMostrarFormularioEditar(true)}
-                                                        >
-                                                            <i className="fas fa-edit me-2"></i>
-                                                            Editar
-                                                        </button>
-                                                        <button
-                                                            className="btn btn-outline-danger"
-                                                            onClick={eliminarUsuario}
-                                                        >
-                                                            <i className="fas fa-trash me-2"></i>
-                                                            Eliminar
-                                                        </button>
-                                                    </div>
-                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="col-md-6">
+                                            <h3 className="mb-1">{usuario.nombre_completo}</h3>
+                                            <p className="text-muted mb-2">{usuario.email}</p>
+                                            <div className="d-flex gap-2 mb-0">
+                                                <span className={getBadgeTipo(usuario.tipo_usuario)}>
+                                                    {usuario.tipo_usuario}
+                                                </span>
+                                                <span className={getBadgeEstado(usuario.estado)}>
+                                                    {usuario.estado}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="col-md-4 text-end">
+                                            <div className="btn-group" role="group">
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-primary"
+                                                    onClick={() => setMostrarFormularioEditar(true)}
+                                                >
+                                                    <i className="fas fa-edit me-1"></i>
+                                                    Editar
+                                                </button>
+                                                {/* Solo mostrar botón eliminar si no es el usuario actual */}
+                                                {usuario.id !== user?.id && (
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-danger"
+                                                        onClick={eliminarUsuario}
+                                                    >
+                                                        <i className="fas fa-trash me-1"></i>
+                                                        Eliminar
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
+                            {/* Información detallada */}
                             <div className="row">
-                                {/* Información detallada */}
-                                <div className="col-md-8">
-                                    <div className="card shadow-sm mb-4">
+                                {/* Información básica */}
+                                <div className="col-md-6 mb-4">
+                                    <div className="card h-100">
                                         <div className="card-header">
-                                            <h5 className="mb-0">
+                                            <h6 className="mb-0">
                                                 <i className="fas fa-info-circle me-2"></i>
-                                                Información Detallada
-                                            </h5>
+                                                Información Básica
+                                            </h6>
                                         </div>
                                         <div className="card-body">
                                             <div className="row">
-                                                <div className="col-md-6">
-                                                    <dl className="row">
-                                                        <dt className="col-sm-5">Nombre completo:</dt>
-                                                        <dd className="col-sm-7">{usuario.nombre_completo}</dd>
-                                                        
-                                                        <dt className="col-sm-5">DUI:</dt>
-                                                        <dd className="col-sm-7"><code>{usuario.dui}</code></dd>
-                                                        
-                                                        <dt className="col-sm-5">Email:</dt>
-                                                        <dd className="col-sm-7">
-                                                            <a href={`mailto:${usuario.email}`} className="text-decoration-none">
-                                                                {usuario.email}
-                                                            </a>
-                                                        </dd>
-                                                        
-                                                        <dt className="col-sm-5">Teléfono:</dt>
-                                                        <dd className="col-sm-7">
-                                                            <a href={`tel:${usuario.telefono}`} className="text-decoration-none">
-                                                                {usuario.telefono}
-                                                            </a>
-                                                        </dd>
-                                                    </dl>
+                                                <div className="col-sm-6 mb-3">
+                                                    <label className="form-label text-muted small">DUI</label>
+                                                    <p className="mb-0 fw-medium">{usuario.dui}</p>
                                                 </div>
-                                                <div className="col-md-6">
-                                                    <dl className="row">
-                                                        <dt className="col-sm-5">Tipo de usuario:</dt>
-                                                        <dd className="col-sm-7">
-                                                            <span className={getBadgeTipo(usuario.tipo_usuario)}>
-                                                                {usuario.tipo_usuario === 'administrador' ? 'Administrador' : 'Despachador'}
-                                                            </span>
-                                                        </dd>
-                                                        
-                                                        <dt className="col-sm-5">Estado:</dt>
-                                                        <dd className="col-sm-7">
-                                                            <span className={getBadgeEstado(usuario.estado)}>
-                                                                {usuario.estado}
-                                                            </span>
-                                                        </dd>
-                                                        
-                                                        <dt className="col-sm-5">Fecha de creación:</dt>
-                                                        <dd className="col-sm-7">{usuario.fecha_creacion_formato}</dd>
-                                                        
-                                                        {usuario.ultimo_acceso_formato && (
-                                                            <>
-                                                                <dt className="col-sm-5">Último acceso:</dt>
-                                                                <dd className="col-sm-7">{usuario.ultimo_acceso_formato}</dd>
-                                                            </>
-                                                        )}
-                                                    </dl>
+                                                <div className="col-sm-6 mb-3">
+                                                    <label className="form-label text-muted small">Teléfono</label>
+                                                    <p className="mb-0 fw-medium">{usuario.telefono}</p>
                                                 </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Actividad reciente */}
-                                    <div className="card shadow-sm">
-                                        <div className="card-header">
-                                            <h5 className="mb-0">
-                                                <i className="fas fa-clock me-2"></i>
-                                                Actividad Reciente
-                                            </h5>
-                                        </div>
-                                        <div className="card-body">
-                                            {actividadReciente.length > 0 ? (
-                                                <div className="timeline">
-                                                    {actividadReciente.map((actividad, index) => (
-                                                        <div key={index} className="d-flex mb-3 pb-3 border-bottom">
-                                                            <div className="me-3">
-                                                                <i className={getIconoActividad(actividad.tipo)}></i>
-                                                            </div>
-                                                            <div className="flex-grow-1">
-                                                                <div className="fw-bold">
-                                                                    {actividad.descripcion}
-                                                                </div>
-                                                                <div className="text-muted small">
-                                                                    {actividad.fecha_formato}
-                                                                </div>
-                                                                {actividad.estado && (
-                                                                    <span className={`badge ${
-                                                                        actividad.estado === 'completado' ? 'bg-success' : 
-                                                                        actividad.estado === 'pendiente' ? 'bg-warning' : 'bg-secondary'
-                                                                    } badge-sm mt-1`}>
-                                                                        {actividad.estado}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                                <div className="col-sm-6 mb-3">
+                                                    <label className="form-label text-muted small">Fecha de Creación</label>
+                                                    <p className="mb-0 fw-medium">{formatearFecha(usuario.fecha_creacion)}</p>
                                                 </div>
-                                            ) : (
-                                                <div className="text-center text-muted py-4">
-                                                    <i className="fas fa-clock fa-3x mb-3"></i>
-                                                    <h6>No hay actividad reciente</h6>
-                                                    <p className="mb-0">Este usuario aún no ha realizado actividades en el sistema</p>
+                                                <div className="col-sm-6 mb-3">
+                                                    <label className="form-label text-muted small">Último Acceso</label>
+                                                    <p className="mb-0 fw-medium">{formatearFechaHora(usuario.ultimo_acceso)}</p>
                                                 </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Sidebar con estadísticas */}
-                                <div className="col-md-4">
-                                    {/* Estadísticas (solo para despachadores) */}
-                                    {estadisticas && usuario.tipo_usuario === 'despachador' && (
-                                        <div className="card shadow-sm mb-4">
-                                            <div className="card-header">
-                                                <h5 className="mb-0">
-                                                    <i className="fas fa-chart-bar me-2"></i>
-                                                    Estadísticas
-                                                </h5>
-                                            </div>
-                                            <div className="card-body">
-                                                <div className="row g-3">
-                                                    <div className="col-6">
-                                                        <div className="text-center p-3 bg-light rounded">
-                                                            <div className="h4 mb-1 text-success">{estadisticas.despachos_completados}</div>
-                                                            <small className="text-muted">Completados</small>
-                                                        </div>
+                                                {usuario.direccion && (
+                                                    <div className="col-12 mb-3">
+                                                        <label className="form-label text-muted small">Dirección</label>
+                                                        <p className="mb-0 fw-medium">{usuario.direccion}</p>
                                                     </div>
-                                                    <div className="col-6">
-                                                        <div className="text-center p-3 bg-light rounded">
-                                                            <div className="h4 mb-1 text-info">{estadisticas.despachos_hoy}</div>
-                                                            <small className="text-muted">Hoy</small>
-                                                        </div>
-                                                    </div>
-                                                    <div className="col-6">
-                                                        <div className="text-center p-3 bg-light rounded">
-                                                            <div className="h4 mb-1 text-warning">{estadisticas.despachos_semana}</div>
-                                                            <small className="text-muted">Esta Semana</small>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                
-                                                <hr />
-                                                
-                                                <div className="mb-3">
-                                                    <label className="form-label text-muted small">Ventas totales</label>
-                                                    <div className="h5 text-success mb-0">
-                                                        ${parseFloat(estadisticas.ventas_totales || 0).toFixed(2)}
-                                                    </div>
-                                                </div>
-                                                
-                                                <div className="mb-3">
-                                                    <label className="form-label text-muted small">Promedio por despacho</label>
-                                                    <div className="h6 text-info mb-0">
-                                                        ${parseFloat(estadisticas.promedio_venta || 0).toFixed(2)}
-                                                    </div>
-                                                </div>
-                                                
-                                                {estadisticas.ultimo_despacho_formato && (
-                                                    <div>
-                                                        <label className="form-label text-muted small">Último despacho</label>
-                                                        <div className="small">
-                                                            {estadisticas.ultimo_despacho_formato}
-                                                        </div>
+                                                )}
+                                                {usuario.fecha_nacimiento && (
+                                                    <div className="col-sm-6 mb-3">
+                                                        <label className="form-label text-muted small">Fecha de Nacimiento</label>
+                                                        <p className="mb-0 fw-medium">{formatearFecha(usuario.fecha_nacimiento)}</p>
                                                     </div>
                                                 )}
                                             </div>
                                         </div>
-                                    )}
+                                    </div>
+                                </div>
 
-                                    {/* Información adicional */}
-                                    <div className="card shadow-sm">
+                                {/* Estadísticas */}
+                                <div className="col-md-6 mb-4">
+                                    <div className="card h-100">
                                         <div className="card-header">
-                                            <h5 className="mb-0">
-                                                <i className="fas fa-cog me-2"></i>
-                                                Información del Sistema
-                                            </h5>
+                                            <h6 className="mb-0">
+                                                <i className="fas fa-chart-bar me-2"></i>
+                                                Estadísticas de Uso
+                                            </h6>
                                         </div>
                                         <div className="card-body">
-                                            {usuario.creado_por_nombre && (
-                                                <div className="mb-3">
-                                                    <label className="form-label text-muted small">Creado por</label>
-                                                    <div>
-                                                        <i className="fas fa-user-plus me-2 text-muted"></i>
-                                                        {usuario.creado_por_nombre}
+                                            {estadisticas && (
+                                                <div className="row">
+                                                    <div className="col-6 mb-3">
+                                                        <div className="text-center">
+                                                            <i className="fas fa-sign-in-alt text-primary fs-4 mb-2"></i>
+                                                            <h5 className="mb-1">{estadisticas.total_sesiones}</h5>
+                                                            <small className="text-muted">Total Sesiones</small>
+                                                        </div>
                                                     </div>
+                                                    <div className="col-6 mb-3">
+                                                        <div className="text-center">
+                                                            <i className="fas fa-clock text-info fs-4 mb-2"></i>
+                                                            <h5 className="mb-1">{estadisticas.tiempo_total_sesiones}</h5>
+                                                            <small className="text-muted">Tiempo Total</small>
+                                                        </div>
+                                                    </div>
+                                                    {usuario.tipo_usuario === 'despachador' && (
+                                                        <>
+                                                            <div className="col-6 mb-3">
+                                                                <div className="text-center">
+                                                                    <i className="fas fa-truck text-warning fs-4 mb-2"></i>
+                                                                    <h5 className="mb-1">{estadisticas.despachos_realizados}</h5>
+                                                                    <small className="text-muted">Despachos</small>
+                                                                </div>
+                                                            </div>
+                                                            <div className="col-6 mb-3">
+                                                                <div className="text-center">
+                                                                    <i className="fas fa-route text-success fs-4 mb-2"></i>
+                                                                    <h5 className="mb-1">{estadisticas.rutas_asignadas}</h5>
+                                                                    <small className="text-muted">Rutas Asignadas</small>
+                                                                </div>
+                                                            </div>
+                                                        </>
+                                                    )}
                                                 </div>
                                             )}
-                                            
-                                            {usuario.modificado_por_nombre && (
-                                                <div className="mb-3">
-                                                    <label className="form-label text-muted small">Modificado por</label>
-                                                    <div>
-                                                        <i className="fas fa-user-edit me-2 text-muted"></i>
-                                                        {usuario.modificado_por_nombre}
-                                                    </div>
-                                                </div>
-                                            )}
-                                            
-                                            {usuario.fecha_modificacion_formato && (
-                                                <div className="mb-3">
-                                                    <label className="form-label text-muted small">Última modificación</label>
-                                                    <div>
-                                                        <i className="fas fa-calendar-edit me-2 text-muted"></i>
-                                                        {usuario.fecha_modificacion_formato}
-                                                    </div>
-                                                </div>
-                                            )}
-                                            
-                                            <div className="mb-3">
-                                                <label className="form-label text-muted small">Estado de conexión</label>
-                                                <div>
-                                                    <span className={getBadgeConexion(usuario.estado_conexion)}>
-                                                        {usuario.estado_conexion}
-                                                    </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Actividad reciente */}
+                            {actividadReciente.length > 0 && (
+                                <div className="row">
+                                    <div className="col-12">
+                                        <div className="card">
+                                            <div className="card-header">
+                                                <h6 className="mb-0">
+                                                    <i className="fas fa-history me-2"></i>
+                                                    Actividad Reciente
+                                                </h6>
+                                            </div>
+                                            <div className="card-body">
+                                                <div className="list-group list-group-flush">
+                                                    {actividadReciente.slice(0, 10).map((actividad) => (
+                                                        <div key={actividad.id} className="list-group-item px-0 border-0 border-bottom">
+                                                            <div className="d-flex justify-content-between align-items-start">
+                                                                <div className="flex-grow-1">
+                                                                    <h6 className="mb-1">{actividad.accion}</h6>
+                                                                    <p className="mb-1 text-muted small">{actividad.descripcion}</p>
+                                                                    <small className="text-muted">
+                                                                        <i className="fas fa-globe me-1"></i>
+                                                                        {actividad.ip}
+                                                                    </small>
+                                                                </div>
+                                                                <small className="text-muted">{formatearFechaHora(actividad.fecha)}</small>
+                                                            </div>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-
-                            {/* Botones de acción */}
-                            <div className="row mt-4">
-                                <div className="col">
-                                    <div className="d-flex justify-content-between">
-                                        <Link href="/usuarios" className="btn btn-outline-secondary">
-                                            <i className="fas fa-arrow-left me-2"></i>
-                                            Volver a Lista de Usuarios
-                                        </Link>
-                                        
-                                        <div>
-                                            <button
-                                                className="btn btn-warning me-2"
-                                                onClick={() => setMostrarFormularioEditar(true)}
-                                            >
-                                                <i className="fas fa-edit me-2"></i>
-                                                Editar Usuario
-                                            </button>
-                                            <button
-                                                className="btn btn-danger"
-                                                onClick={eliminarUsuario}
-                                            >
-                                                <i className="fas fa-trash me-2"></i>
-                                                Eliminar Usuario
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            )}
                         </>
                     )}
-                </div>
 
-                {/* Modal del formulario de edición */}
-                {mostrarFormularioEditar && usuario && (
-                    <FormularioUsuario
-                        usuario={usuario}
-                        modoEdicion={true}
-                        onClose={() => setMostrarFormularioEditar(false)}
-                        onSuccess={handleFormularioSuccess}
-                    />
-                )}
-
-                {/* Footer */}
-                <footer className="bg-dark text-light py-3 mt-5">
-                    <div className="container-fluid">
-                        <div className="row align-items-center">
-                            <div className="col-md-6">
-                                <small>© 2024 Distribuidora Lorena. Todos los derechos reservados.</small>
-                            </div>
-                            <div className="col-md-6 text-md-end">
-                                <small>
-                                    Sistema de Gestión v1.0 - Detalle de Usuario
-                                </small>
-                            </div>
-                        </div>
-                    </div>
-                </footer>
+                    {/* Modal para editar usuario */}
+                    {mostrarFormularioEditar && usuario && (
+                        <FormularioUsuario
+                            usuario={usuario}
+                            modoEdicion={true}
+                            onClose={() => setMostrarFormularioEditar(false)}
+                            onSuccess={() => {
+                                setMostrarFormularioEditar(false);
+                                cargarDatosUsuario();
+                                setSuccess('Usuario actualizado correctamente');
+                            }}
+                        />
+                    )}
+                </main>
             </div>
         </ProtectedRoute>
     );
