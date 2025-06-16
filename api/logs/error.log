@@ -1,0 +1,1 @@
+2025-06-16 18:50:48 - Error logging login activity: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'distribuidora_lorena.activity_logs' doesn't exist

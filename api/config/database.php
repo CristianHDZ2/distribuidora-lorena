@@ -113,6 +113,34 @@ function verifyPassword($password, $hash) {
     return password_verify($password, $hash);
 }
 
+// Función para crear URL completa de archivos
+function getFileUrl($path) {
+    if (empty($path)) {
+        return null;
+    }
+    
+    // Obtener el protocolo (http o https)
+    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+    
+    // Obtener el host
+    $host = $_SERVER['HTTP_HOST'];
+    
+    // Construir la URL base
+    $base_url = $protocol . '://' . $host;
+    
+    // Asegurarse de que la ruta empiece con /
+    if (!str_starts_with($path, '/')) {
+        $path = '/' . $path;
+    }
+    
+    // Si la ruta no incluye /api/uploads/, agregarla
+    if (!str_contains($path, '/api/uploads/')) {
+        $path = '/api/uploads' . $path;
+    }
+    
+    return $base_url . $path;
+}
+
 // Función para manejar uploads de archivos
 function handleFileUpload($file, $upload_dir, $allowed_types = array('jpg', 'jpeg', 'png'), $max_size = 5242880) {
     if (!isset($file) || $file['error'] !== UPLOAD_ERR_OK) {
@@ -166,45 +194,33 @@ function formatDecimal($number, $decimals = 2) {
     return number_format($number, $decimals, '.', '');
 }
 
+// Función para formatear moneda
+function formatCurrency($amount) {
+    return '$' . number_format($amount, 2, '.', ',');
+}
+
 // Función para validar fechas
 function validateDate($date, $format = 'Y-m-d') {
     $d = DateTime::createFromFormat($format, $date);
     return $d && $d->format($format) === $date;
 }
 
-// Función para obtener estado de stock
-function getStockStatus($current_stock, $min_stock = 10, $medium_stock = 50) {
-    if ($current_stock == 0) {
-        return 'sin_stock';
-    } elseif ($current_stock <= $min_stock) {
-        return 'bajo';
-    } elseif ($current_stock <= $medium_stock) {
-        return 'intermedio';
-    } else {
-        return 'alto';
+// Función para logging de errores
+function logError($message) {
+    $log_file = __DIR__ . '/../logs/error.log';
+    $log_dir = dirname($log_file);
+    
+    if (!is_dir($log_dir)) {
+        mkdir($log_dir, 0777, true);
     }
+    
+    $timestamp = date('Y-m-d H:i:s');
+    $log_message = "[{$timestamp}] {$message}" . PHP_EOL;
+    
+    file_put_contents($log_file, $log_message, FILE_APPEND | LOCK_EX);
 }
 
-// Función para generar códigos únicos
-function generateUniqueCode($prefix = '', $length = 8) {
-    $characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    $code = $prefix;
-    for ($i = 0; $i < $length; $i++) {
-        $code .= $characters[rand(0, strlen($characters) - 1)];
-    }
-    return $code;
-}
-
-// Función para log de errores personalizados
-function logError($message, $context = '') {
-    $log_message = date('Y-m-d H:i:s') . " - " . $message;
-    if (!empty($context)) {
-        $log_message .= " - Context: " . $context;
-    }
-    error_log($log_message . "\n", 3, __DIR__ . "/../logs/error.log");
-}
-
-// Función para log de actividades
+// Función para logging de actividades
 function logActivity($user_id, $action, $details = '') {
     try {
         $database = new Database();
@@ -220,9 +236,59 @@ function logActivity($user_id, $action, $details = '') {
     }
 }
 
-// Crear directorio de logs si no existe
-if (!is_dir(__DIR__ . "/../logs")) {
-    mkdir(__DIR__ . "/../logs", 0777, true);
+// Función para generar códigos únicos
+function generateUniqueCode($prefix = '', $length = 8) {
+    $characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    $code = $prefix;
+    
+    for ($i = 0; $i < $length; $i++) {
+        $code .= $characters[rand(0, strlen($characters) - 1)];
+    }
+    
+    return $code;
+}
+
+// Función para paginar resultados
+function paginate($total_records, $records_per_page = 10, $current_page = 1) {
+    $total_pages = ceil($total_records / $records_per_page);
+    $offset = ($current_page - 1) * $records_per_page;
+    
+    return array(
+        'total_records' => $total_records,
+        'total_pages' => $total_pages,
+        'current_page' => $current_page,
+        'records_per_page' => $records_per_page,
+        'offset' => $offset,
+        'has_previous' => $current_page > 1,
+        'has_next' => $current_page < $total_pages
+    );
+}
+
+// Función para validar permisos de usuario
+function validateUserPermission($user_type, $required_permission) {
+    $permissions = array(
+        'administrador' => array(
+            'manage_users', 'manage_products', 'manage_inventory', 
+            'manage_dispatch', 'manage_routes', 'manage_drivers', 
+            'manage_trucks', 'view_reports', 'manage_reports', 'system_settings'
+        ),
+        'despachador' => array(
+            'view_inventory', 'manage_dispatch', 'view_my_dispatches', 'view_reports'
+        )
+    );
+    
+    return isset($permissions[$user_type]) && in_array($required_permission, $permissions[$user_type]);
+}
+
+// Función para crear directorio de uploads si no existe
+function ensureUploadDirectory($path) {
+    $upload_dir = __DIR__ . '/../uploads/' . $path;
+    
+    if (!is_dir($upload_dir)) {
+        mkdir($upload_dir, 0777, true);
+    }
+    
+    return $upload_dir;
 }
 
 ?>
