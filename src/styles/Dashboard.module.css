@@ -1,0 +1,107 @@
+/* src/styles/Dashboard.module.css */
+
+/* Contenedor principal del dashboard */
+.dashboardContainer {
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}
+
+/* Círculo de iconos para estadísticas */
+.iconCircle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.iconCircle i {
+  font-size: 1.5rem;
+}
+
+/* Tarjetas de acceso rápido */
+.quickAccessCard {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.quickAccessCard:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+  border-color: #dee2e6;
+}
+
+.quickAccessCard:active {
+  transform: translateY(-2px);
+}
+
+.quickAccessCard i {
+  transition: all 0.3s ease;
+}
+
+.quickAccessCard:hover i {
+  transform: scale(1.1);
+}
+
+/* Gradiente para el header de bienvenida */
+.bg-gradient-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+/* Animaciones */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dashboardContainer .card {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.dashboardContainer .card:nth-child(1) { animation-delay: 0.1s; }
+.dashboardContainer .card:nth-child(2) { animation-delay: 0.2s; }
+.dashboardContainer .card:nth-child(3) { animation-delay: 0.3s; }
+.dashboardContainer .card:nth-child(4) { animation-delay: 0.4s; }
+
+/* Responsivo */
+@media (max-width: 768px) {
+  .dashboardContainer .container-fluid {
+    padding: 1rem;
+  }
+  
+  .iconCircle {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .iconCircle i {
+    font-size: 1.2rem;
+  }
+  
+  .quickAccessCard .card-body {
+    padding: 1rem !important;
+  }
+  
+  .quickAccessCard i {
+    font-size: 1.5rem !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .dashboardContainer .container-fluid {
+    padding: 0.5rem;
+  }
+  
+  .quickAccessCard .card-body {
+    padding: 0.75rem !important;
+  }
+}

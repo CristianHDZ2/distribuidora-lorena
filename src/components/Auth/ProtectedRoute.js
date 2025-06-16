@@ -1,76 +1,54 @@
-// Archivo: src/components/Auth/ProtectedRoute.js
-
+// src/components/Auth/ProtectedRoute.js
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
-import { toast } from 'react-toastify'
-import useAuth from '@/hooks/useAuth'
+import useAuth from '../../hooks/useAuth'
 
-/**
- * Componente para proteger rutas que requieren autenticación
- * @param {object} props - Propiedades del componente
- * @param {React.ReactNode} props.children - Componentes hijos
- * @param {string} props.requiredPermission - Permiso específico requerido
- * @param {boolean} props.adminOnly - Solo administradores
- * @param {boolean} props.despachadorOnly - Solo despachadores
- * @param {string} props.redirectTo - Ruta de redirección si no tiene acceso
- * @param {React.ReactNode} props.fallback - Componente a mostrar mientras verifica
- * @returns {React.ReactElement}
- */
-const ProtectedRoute = ({
-  children,
-  requiredPermission = null,
-  adminOnly = false,
+const ProtectedRoute = ({ 
+  children, 
+  requiredPermission = null, 
+  adminOnly = false, 
   despachadorOnly = false,
   redirectTo = '/login',
-  fallback = null
+  fallback = null 
 }) => {
-  const router = useRouter()
-  const { 
-    user, 
-    loading, 
-    isLoggedIn, 
-    hasPermission, 
-    isAdmin, 
-    isDespachador 
-  } = useAuth()
-  
-  const [canAccess, setCanAccess] = useState(false)
+  const { loading, isLoggedIn, hasPermission, isAdmin, isDespachador } = useAuth()
   const [isChecking, setIsChecking] = useState(true)
+  const [canAccess, setCanAccess] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     const checkAccess = async () => {
-      // Esperar a que termine la verificación de autenticación
-      if (loading) {
-        return
-      }
-
-      setIsChecking(true)
-
       try {
+        setIsChecking(true)
+
+        // Esperar a que termine la verificación inicial de autenticación
+        if (loading) {
+          return
+        }
+
         // Verificar si está autenticado
         if (!isLoggedIn) {
-          toast.info('Debes iniciar sesión para acceder')
           router.push(redirectTo)
           return
         }
 
         // Verificar permisos específicos
         if (requiredPermission && !hasPermission(requiredPermission)) {
-          toast.error('No tienes permisos para acceder a esta página')
+          console.error('No tienes permisos para acceder a esta página')
           router.push('/dashboard')
           return
         }
 
         // Verificar si requiere ser administrador
         if (adminOnly && !isAdmin()) {
-          toast.error('Solo los administradores pueden acceder a esta página')
+          console.error('Solo los administradores pueden acceder a esta página')
           router.push('/dashboard')
           return
         }
 
         // Verificar si requiere ser despachador
         if (despachadorOnly && !isDespachador()) {
-          toast.error('Solo los despachadores pueden acceder a esta página')
+          console.error('Solo los despachadores pueden acceder a esta página')
           router.push('/dashboard')
           return
         }
@@ -79,7 +57,6 @@ const ProtectedRoute = ({
         setCanAccess(true)
       } catch (error) {
         console.error('Error verificando acceso:', error)
-        toast.error('Error verificando permisos')
         router.push('/dashboard')
       } finally {
         setIsChecking(false)
@@ -128,12 +105,7 @@ const ProtectedRoute = ({
   return children
 }
 
-/**
- * HOC para envolver páginas que requieren autenticación
- * @param {React.Component} Component - Componente de página
- * @param {object} options - Opciones de protección
- * @returns {React.Component}
- */
+// HOC para envolver páginas que requieren autenticación
 export const withAuth = (Component, options = {}) => {
   const AuthenticatedComponent = (props) => {
     return (
@@ -149,80 +121,31 @@ export const withAuth = (Component, options = {}) => {
   return AuthenticatedComponent
 }
 
-/**
- * Componente para mostrar contenido solo si el usuario tiene permisos específicos
- * @param {object} props - Propiedades del componente
- * @param {React.ReactNode} props.children - Contenido a mostrar
- * @param {string} props.permission - Permiso requerido
- * @param {boolean} props.adminOnly - Solo para administradores
- * @param {boolean} props.despachadorOnly - Solo para despachadores
- * @param {React.ReactNode} props.fallback - Contenido alternativo
- * @returns {React.ReactElement|null}
- */
-export const PermissionGate = ({
-  children,
-  permission = null,
-  adminOnly = false,
+// Componente para mostrar contenido solo si el usuario tiene permisos específicos
+export const PermissionGuard = ({ 
+  children, 
+  permission = null, 
+  adminOnly = false, 
   despachadorOnly = false,
-  fallback = null
+  fallback = null 
 }) => {
-  const { user, hasPermission, isAdmin, isDespachador } = useAuth()
+  const { hasPermission, isAdmin, isDespachador } = useAuth()
 
-  // Si no hay usuario, no mostrar nada
-  if (!user) {
-    return fallback
-  }
-
-  // Verificar permiso específico
-  if (permission && !hasPermission(permission)) {
-    return fallback
-  }
-
-  // Verificar si requiere ser administrador
-  if (adminOnly && !isAdmin()) {
-    return fallback
-  }
-
-  // Verificar si requiere ser despachador
-  if (despachadorOnly && !isDespachador()) {
-    return fallback
-  }
-
-  // Si pasa todas las verificaciones, mostrar contenido
-  return children
-}
-
-/**
- * Hook para verificar permisos de manera condicional
- * @param {object} options - Opciones de verificación
- * @returns {object}
- */
-export const usePermissions = (options = {}) => {
-  const {
-    permission = null,
-    adminOnly = false,
-    despachadorOnly = false
-  } = options
-
-  const { user, hasPermission, isAdmin, isDespachador } = useAuth()
-
-  const canAccess = () => {
-    if (!user) return false
-    
-    if (permission && !hasPermission(permission)) return false
+  // Verificar permisos
+  const hasAccess = () => {
     if (adminOnly && !isAdmin()) return false
     if (despachadorOnly && !isDespachador()) return false
-    
+    if (permission && !hasPermission(permission)) return false
     return true
   }
 
-  return {
-    canAccess: canAccess(),
-    user,
-    isAdmin: isAdmin(),
-    isDespachador: isDespachador(),
-    hasPermission
+  // Si no tiene acceso, mostrar fallback o nada
+  if (!hasAccess()) {
+    return fallback || null
   }
+
+  // Si tiene acceso, mostrar contenido
+  return children
 }
 
 export default ProtectedRoute

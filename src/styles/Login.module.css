@@ -1,0 +1,158 @@
+/* src/styles/Login.module.css */
+
+/* Contenedor principal de login */
+.loginContainer {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Panel de información (lado izquierdo) */
+.loginInfoPanel {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.loginInfoPanel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('/assets/images/bg-login.jpg') center/cover;
+  opacity: 0.1;
+  z-index: 0;
+}
+
+.loginInfoContent {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  max-width: 400px;
+  padding: 2rem;
+}
+
+.logoLogin {
+  max-width: 120px;
+  height: auto;
+  filter: brightness(0) invert(1);
+  margin-bottom: 1rem;
+}
+
+.logoLoginMobile {
+  max-width: 80px;
+  height: auto;
+  margin-bottom: 0.5rem;
+}
+
+.featuresList {
+  text-align: left;
+  margin-top: 2rem;
+}
+
+.featureItem {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.featureItem i {
+  font-size: 1.2rem;
+  width: 24px;
+}
+
+/* Panel de formulario (lado derecho) */
+.loginFormPanel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  padding: 2rem 1rem;
+}
+
+.loginFormContainer {
+  width: 100%;
+  max-width: 420px;
+}
+
+.loginFormContainer .card {
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.loginFormContainer .card-body {
+  padding: 2.5rem 2rem;
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.loginFormContainer .card {
+  animation: fadeIn 0.6s ease-out;
+}
+
+.featureItem {
+  animation: fadeIn 0.8s ease-out;
+}
+
+.featureItem:nth-child(1) { animation-delay: 0.1s; }
+.featureItem:nth-child(2) { animation-delay: 0.2s; }
+.featureItem:nth-child(3) { animation-delay: 0.3s; }
+.featureItem:nth-child(4) { animation-delay: 0.4s; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .loginContainer {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  }
+  
+  .loginFormPanel {
+    padding: 1rem;
+  }
+  
+  .loginFormContainer .card-body {
+    padding: 1.5rem;
+  }
+  
+  .logoLoginMobile {
+    max-width: 60px;
+  }
+  
+  .featureItem {
+    margin-bottom: 0.5rem;
+    padding: 0.3rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .loginFormContainer {
+    max-width: 100%;
+  }
+  
+  .loginFormContainer .card {
+    margin: 0.5rem;
+  }
+  
+  .loginFormContainer .card-body {
+    padding: 1.25rem;
+  }
+}
