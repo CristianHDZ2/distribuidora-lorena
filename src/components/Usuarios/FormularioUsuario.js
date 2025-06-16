@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import useAuth from '../../hooks/useAuth'; // Cambio aquí: import default
+import useAuth from '../../hooks/useAuth';
 
 const FormularioUsuario = ({ usuario, modoEdicion, onClose, onSuccess }) => {
-    const { user } = useAuth(); // Obtenemos el usuario actual
+    const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -56,6 +56,25 @@ const FormularioUsuario = ({ usuario, modoEdicion, onClose, onSuccess }) => {
             if (usuario.foto_perfil) {
                 setFotoPreview(`/api/uploads/usuarios/${usuario.foto_perfil}`);
             }
+        } else {
+            // Limpiar formulario para nuevo usuario
+            setFormData({
+                dui: '',
+                nombre: '',
+                apellido: '',
+                telefono: '',
+                email: '',
+                tipo_usuario: 'despachador',
+                estado: 'activo',
+                password: '',
+                confirmar_password: '',
+                nueva_password: '',
+                confirmar_nueva_password: '',
+                direccion: '',
+                fecha_nacimiento: ''
+            });
+            setFotoPreview(null);
+            setArchivoFoto(null);
         }
     }, [modoEdicion, usuario]);
 
@@ -188,40 +207,6 @@ const FormularioUsuario = ({ usuario, modoEdicion, onClose, onSuccess }) => {
             setError('');
 
             // Por ahora simulamos el envío
-            // const formDataToSend = new FormData();
-            // formDataToSend.append('dui', formData.dui);
-            // formDataToSend.append('nombre', formData.nombre);
-            // formDataToSend.append('apellido', formData.apellido);
-            // formDataToSend.append('telefono', formData.telefono);
-            // formDataToSend.append('email', formData.email);
-            // formDataToSend.append('tipo_usuario', formData.tipo_usuario);
-            // formDataToSend.append('estado', formData.estado);
-            // formDataToSend.append('direccion', formData.direccion);
-            // formDataToSend.append('fecha_nacimiento', formData.fecha_nacimiento);
-            
-            // if (!modoEdicion) {
-            //     formDataToSend.append('password', formData.password);
-            // } else {
-            //     formDataToSend.append('id', usuario.id);
-            //     if (formData.nueva_password) {
-            //         formDataToSend.append('nueva_password', formData.nueva_password);
-            //     }
-            // }
-            
-            // if (archivoFoto) {
-            //     formDataToSend.append('foto_perfil', archivoFoto);
-            // }
-
-            // const endpoint = modoEdicion ? '/api/usuarios/actualizar.php' : '/api/usuarios/crear.php';
-            // const response = await fetch(endpoint, {
-            //     method: 'POST',
-            //     headers: {
-            //         'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-            //     },
-            //     body: formDataToSend
-            // });
-
-            // Simular respuesta exitosa
             await new Promise(resolve => setTimeout(resolve, 1000));
             
             setSuccess(modoEdicion ? 'Usuario actualizado correctamente' : 'Usuario creado correctamente');
@@ -237,10 +222,25 @@ const FormularioUsuario = ({ usuario, modoEdicion, onClose, onSuccess }) => {
         }
     };
 
+    // Manejar cierre del modal (incluir backdrop click)
+    const handleModalClick = (e) => {
+        if (e.target === e.currentTarget) {
+            onClose();
+        }
+    };
+
     return (
-        <div className="modal fade show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-            <div className="modal-dialog modal-lg modal-dialog-scrollable">
-                <div className="modal-content">
+        <div 
+            className="modal fade show" 
+            style={{ 
+                display: 'block', 
+                backgroundColor: 'rgba(0,0,0,0.5)', 
+                zIndex: 1050 
+            }}
+            onClick={handleModalClick}
+        >
+            <div className="modal-dialog modal-lg">
+                <div className="modal-content" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
                     <div className="modal-header">
                         <h5 className="modal-title">
                             <i className="fas fa-user-plus me-2"></i>
@@ -249,8 +249,8 @@ const FormularioUsuario = ({ usuario, modoEdicion, onClose, onSuccess }) => {
                         <button type="button" className="btn-close" onClick={onClose}></button>
                     </div>
                     
-                    <form onSubmit={handleSubmit}>
-                        <div className="modal-body">
+                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                        <div className="modal-body" style={{ flex: 1, overflowY: 'auto', maxHeight: 'calc(90vh - 140px)' }}>
                             {/* Mensajes de estado */}
                             {error && (
                                 <div className="alert alert-danger">
@@ -557,7 +557,7 @@ const FormularioUsuario = ({ usuario, modoEdicion, onClose, onSuccess }) => {
                             )}
                         </div>
                         
-                        <div className="modal-footer">
+                        <div className="modal-footer" style={{ flexShrink: 0 }}>
                             <button 
                                 type="button" 
                                 className="btn btn-secondary" 

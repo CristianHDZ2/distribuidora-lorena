@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import useAuth from '../../hooks/useAuth'; // Cambio aquí: import default
+import useAuth from '../../hooks/useAuth';
 import FormularioUsuario from './FormularioUsuario';
 import DetalleUsuario from './DetalleUsuario';
 
 const ListaUsuarios = () => {
-    const { user } = useAuth(); // Obtener el usuario actual del contexto
+    const { user } = useAuth();
     const [usuarios, setUsuarios] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -51,19 +51,6 @@ const ListaUsuarios = () => {
             setLoading(true);
             setError('');
             
-            const params = new URLSearchParams({
-                pagina: pagina.toString(),
-                por_pagina: paginacion.por_pagina.toString(),
-                ...filtros
-            });
-            
-            // Por ahora usamos datos simulados hasta que tengamos la API
-            // const response = await fetch(`/api/usuarios/listar.php?${params}`, {
-            //     headers: {
-            //         'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-            //     }
-            // });
-            
             // Datos simulados para desarrollo
             const usuariosSimulados = [
                 {
@@ -95,9 +82,20 @@ const ListaUsuarios = () => {
                     email: 'maria@distribuidora.com',
                     telefono: '7999-9999',
                     tipo_usuario: 'despachador',
-                    estado: 'activo',
+                    estado: 'inactivo',
                     fecha_creacion: '2024-03-15',
                     ultimo_acceso: '2024-06-15 16:45:00'
+                },
+                {
+                    id: 4,
+                    dui: '44444444-4',
+                    nombre_completo: 'Juan Pérez',
+                    email: 'juan@distribuidora.com',
+                    telefono: '7555-5555',
+                    tipo_usuario: 'despachador',
+                    estado: 'activo',
+                    fecha_creacion: '2024-04-10',
+                    ultimo_acceso: '2024-06-14 14:20:00'
                 }
             ];
 
@@ -135,7 +133,6 @@ const ListaUsuarios = () => {
     // Cargar estadísticas
     const cargarEstadisticas = async () => {
         try {
-            // Datos simulados para estadísticas
             setEstadisticas({
                 total_usuarios: 15,
                 administradores: 3,
@@ -146,6 +143,48 @@ const ListaUsuarios = () => {
             });
         } catch (err) {
             console.error('Error al cargar estadísticas:', err);
+        }
+    };
+
+    // Cambiar estado del usuario (activar/desactivar)
+    const cambiarEstadoUsuario = async (usuarioId, nuevoEstado) => {
+        try {
+            // Simular cambio de estado
+            setUsuarios(prevUsuarios =>
+                prevUsuarios.map(usuario =>
+                    usuario.id === usuarioId
+                        ? { ...usuario, estado: nuevoEstado }
+                        : usuario
+                )
+            );
+            
+            setSuccess(`Usuario ${nuevoEstado === 'activo' ? 'activado' : 'desactivado'} correctamente`);
+            
+            // Ocultar mensaje después de 3 segundos
+            setTimeout(() => setSuccess(''), 3000);
+            
+        } catch (err) {
+            setError('Error al cambiar estado del usuario: ' + err.message);
+        }
+    };
+
+    // Eliminar usuario
+    const eliminarUsuario = async (usuarioId) => {
+        const usuario = usuarios.find(u => u.id === usuarioId);
+        if (!confirm(`¿Estás seguro de eliminar al usuario ${usuario.nombre_completo}?`)) {
+            return;
+        }
+
+        try {
+            // Simular eliminación
+            setUsuarios(prevUsuarios => prevUsuarios.filter(u => u.id !== usuarioId));
+            setSuccess('Usuario eliminado correctamente');
+            
+            // Ocultar mensaje después de 3 segundos
+            setTimeout(() => setSuccess(''), 3000);
+            
+        } catch (err) {
+            setError('Error al eliminar usuario: ' + err.message);
         }
     };
 
@@ -366,7 +405,7 @@ const ListaUsuarios = () => {
                                         <th scope="col">Tipo</th>
                                         <th scope="col">Estado</th>
                                         <th scope="col">Último Acceso</th>
-                                        <th scope="col" className="text-center">Acciones</th>
+                                        <th scope="col" className="text-center" style={{ minWidth: '200px' }}>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -404,11 +443,11 @@ const ListaUsuarios = () => {
                                                     {formatearFechaHora(usuario.ultimo_acceso)}
                                                 </small>
                                             </td>
-                                            <td className="text-center">
-                                                <div className="btn-group btn-group-sm" role="group">
+                                            <td>
+                                                <div className="d-flex gap-1 justify-content-center flex-wrap">
                                                     <button
                                                         type="button"
-                                                        className="btn btn-outline-primary"
+                                                        className="btn btn-sm btn-outline-primary"
                                                         title="Ver detalles"
                                                         onClick={() => {
                                                             setUsuarioSeleccionado(usuario);
@@ -417,9 +456,10 @@ const ListaUsuarios = () => {
                                                     >
                                                         <i className="fas fa-eye"></i>
                                                     </button>
+                                                    
                                                     <button
                                                         type="button"
-                                                        className="btn btn-outline-success"
+                                                        className="btn btn-sm btn-outline-success"
                                                         title="Editar usuario"
                                                         onClick={() => {
                                                             setUsuarioSeleccionado(usuario);
@@ -429,21 +469,28 @@ const ListaUsuarios = () => {
                                                     >
                                                         <i className="fas fa-edit"></i>
                                                     </button>
-                                                    {/* Solo mostrar botón eliminar si no es el usuario actual */}
+
+                                                    {/* Solo mostrar botones de estado y eliminar si no es el usuario actual */}
                                                     {usuario.id !== user?.id && (
-                                                        <button
-                                                            type="button"
-                                                            className="btn btn-outline-danger"
-                                                            title="Eliminar usuario"
-                                                            onClick={() => {
-                                                                if (confirm(`¿Estás seguro de eliminar al usuario ${usuario.nombre_completo}?`)) {
-                                                                    // Aquí iría la función de eliminar
-                                                                    console.log('Eliminar usuario:', usuario.id);
-                                                                }
-                                                            }}
-                                                        >
-                                                            <i className="fas fa-trash"></i>
-                                                        </button>
+                                                        <>
+                                                            <button
+                                                                type="button"
+                                                                className={`btn btn-sm ${usuario.estado === 'activo' ? 'btn-outline-warning' : 'btn-outline-success'}`}
+                                                                title={usuario.estado === 'activo' ? 'Desactivar usuario' : 'Activar usuario'}
+                                                                onClick={() => cambiarEstadoUsuario(usuario.id, usuario.estado === 'activo' ? 'inactivo' : 'activo')}
+                                                            >
+                                                                <i className={`fas ${usuario.estado === 'activo' ? 'fa-pause' : 'fa-play'}`}></i>
+                                                            </button>
+                                                            
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-sm btn-outline-danger"
+                                                                title="Eliminar usuario"
+                                                                onClick={() => eliminarUsuario(usuario.id)}
+                                                            >
+                                                                <i className="fas fa-trash"></i>
+                                                            </button>
+                                                        </>
                                                     )}
                                                 </div>
                                             </td>
@@ -503,6 +550,7 @@ const ListaUsuarios = () => {
             {mostrarFormulario && (
                 <FormularioUsuario
                     usuario={modoEdicion ? usuarioSeleccionado : null}
+                    modoEdicion={modoEdicion}
                     onClose={() => {
                         setMostrarFormulario(false);
                         setModoEdicion(false);
@@ -552,12 +600,28 @@ const ListaUsuarios = () => {
                     vertical-align: middle;
                 }
                 
-                .btn-group-sm .btn {
+                .btn-sm {
                     padding: 0.25rem 0.5rem;
+                    font-size: 0.875rem;
                 }
                 
                 .pagination-sm .page-link {
                     padding: 0.375rem 0.75rem;
+                }
+
+                .d-flex.gap-1 {
+                    gap: 0.25rem !important;
+                }
+
+                @media (max-width: 768px) {
+                    .d-flex.gap-1 {
+                        flex-direction: column;
+                        align-items: center;
+                    }
+                    
+                    .btn-sm {
+                        min-width: 35px;
+                    }
                 }
             `}</style>
         </div>

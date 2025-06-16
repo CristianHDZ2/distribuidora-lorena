@@ -1,11 +1,12 @@
 // src/components/Auth/ProtectedRoute.js
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
-import useAuth from '../../hooks/useAuth'
+import useAuth from '../../hooks/useAuth' // Cambio aquí: import default
 
 const ProtectedRoute = ({ 
   children, 
   requiredPermission = null, 
+  requiredPermissions = [], // Agregado para compatibilidad
   adminOnly = false, 
   despachadorOnly = false,
   redirectTo = '/login',
@@ -32,11 +33,35 @@ const ProtectedRoute = ({
           return
         }
 
-        // Verificar permisos específicos
+        // Verificar permisos específicos (individual)
         if (requiredPermission && !hasPermission(requiredPermission)) {
           console.error('No tienes permisos para acceder a esta página')
           router.push('/dashboard')
           return
+        }
+
+        // Verificar permisos específicos (array) - para compatibilidad
+        if (requiredPermissions.length > 0) {
+          const tienePermiso = requiredPermissions.some(permission => {
+            // Si el permiso es solo texto, verificar si es administrador
+            if (permission === 'administrador') {
+              return isAdmin()
+            }
+            if (permission === 'despachador') {
+              return isDespachador()
+            }
+            if (permission === 'manage_users') {
+              return isAdmin()
+            }
+            // Usar la función hasPermission para otros permisos
+            return hasPermission(permission)
+          })
+
+          if (!tienePermiso) {
+            console.error('No tienes permisos para acceder a esta página')
+            router.push('/dashboard')
+            return
+          }
         }
 
         // Verificar si requiere ser administrador
@@ -71,6 +96,7 @@ const ProtectedRoute = ({
     isAdmin,
     isDespachador,
     requiredPermission,
+    requiredPermissions,
     adminOnly,
     despachadorOnly,
     router,
@@ -96,9 +122,24 @@ const ProtectedRoute = ({
     )
   }
 
-  // Si no tiene acceso, no renderizar nada (ya se redirigió)
+  // Si no tiene acceso, mostrar mensaje de acceso denegado
   if (!canAccess) {
-    return null
+    return (
+      <div className="min-vh-100 d-flex align-items-center justify-content-center">
+        <div className="text-center">
+          <i className="fas fa-exclamation-triangle text-warning fs-1 mb-3"></i>
+          <h3 className="text-warning">Acceso Denegado</h3>
+          <p className="text-muted">No tienes permisos para acceder a esta sección.</p>
+          <button 
+            onClick={() => router.push('/dashboard')} 
+            className="btn btn-primary"
+          >
+            <i className="fas fa-home me-2"></i>
+            Ir al Dashboard
+          </button>
+        </div>
+      </div>
+    )
   }
 
   // Si tiene acceso, renderizar componentes hijos

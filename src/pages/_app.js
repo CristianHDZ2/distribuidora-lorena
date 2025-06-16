@@ -13,8 +13,12 @@ export default function App({ Component, pageProps }) {
     const loadBootstrap = async () => {
       if (typeof window !== 'undefined') {
         // Cargar Bootstrap JS dinámicamente
-        const { default: bootstrap } = await import('bootstrap/dist/js/bootstrap.bundle.min.js')
-        window.bootstrap = bootstrap
+        try {
+          const { default: bootstrap } = await import('bootstrap/dist/js/bootstrap.bundle.min.js')
+          window.bootstrap = bootstrap
+        } catch (error) {
+          console.warn('Bootstrap JS no se pudo cargar:', error)
+        }
       }
     }
     
@@ -28,6 +32,22 @@ export default function App({ Component, pageProps }) {
         <meta name="description" content="Sistema de gestión de despacho para Distribuidora Lorena" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/logo.png" />
+        
+        {/* Bootstrap CSS */}
+        <link 
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" 
+          rel="stylesheet" 
+          integrity="sha384-9ndCyUa7PQ2NgrXF7n1ZKEwQMqUNgYPsaYRYPM4Zm0FWxZm4fB8mwsqD3PlxX5M1" 
+          crossOrigin="anonymous"
+        />
+        
+        {/* Font Awesome */}
+        <link 
+          rel="stylesheet" 
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" 
+          integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" 
+          crossOrigin="anonymous" 
+        />
         
         {/* Preload de fuentes importantes */}
         <link 
@@ -43,17 +63,11 @@ export default function App({ Component, pageProps }) {
         <meta name="apple-mobile-web-app-title" content="Distribuidora Lorena" />
       </Head>
 
-      {/* Scripts externos */}
+      {/* Bootstrap JavaScript */}
       <Script
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
         strategy="lazyOnload"
         integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
-        crossOrigin="anonymous"
-      />
-      
-      <Script
-        src="https://kit.fontawesome.com/your-kit-id.js"
-        strategy="lazyOnload"
         crossOrigin="anonymous"
       />
 

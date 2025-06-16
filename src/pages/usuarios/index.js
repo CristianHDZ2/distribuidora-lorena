@@ -1,15 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import useAuth from '../../hooks/useAuth'; // Cambio aquí: import default en lugar de named import
+import useAuth from '../../hooks/useAuth';
 import ProtectedRoute from '../../components/Auth/ProtectedRoute';
 import ListaUsuarios from '../../components/Usuarios/ListaUsuarios';
+import FormularioUsuario from '../../components/Usuarios/FormularioUsuario';
 
 const UsuariosPage = () => {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
+    const [mostrarFormularioNuevo, setMostrarFormularioNuevo] = useState(false);
+
+    const handleLogout = async () => {
+        if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
+            await logout();
+        }
+    };
 
     return (
-        <ProtectedRoute requiredPermissions={['administrador']}>
+        <ProtectedRoute requiredPermissions={['manage_users']}>
             <Head>
                 <title>Gestión de Usuarios - Distribuidora Lorena</title>
                 <meta name="description" content="Gestiona los usuarios del sistema de Distribuidora Lorena" />
@@ -52,12 +60,14 @@ const UsuariosPage = () => {
                                 <button 
                                     className="btn btn-outline-light btn-sm dropdown-toggle" 
                                     type="button" 
+                                    id="dropdownMenuButton"
                                     data-bs-toggle="dropdown"
+                                    aria-expanded="false"
                                 >
                                     <i className="fas fa-cog me-1"></i>
                                     Opciones
                                 </button>
-                                <ul className="dropdown-menu dropdown-menu-end">
+                                <ul className="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton">
                                     <li>
                                         <Link href="/dashboard" className="dropdown-item">
                                             <i className="fas fa-home me-2"></i>Dashboard
@@ -67,11 +77,7 @@ const UsuariosPage = () => {
                                     <li>
                                         <button 
                                             className="dropdown-item text-danger"
-                                            onClick={() => {
-                                                if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
-                                                    window.location.href = '/login';
-                                                }
-                                            }}
+                                            onClick={handleLogout}
                                         >
                                             <i className="fas fa-sign-out-alt me-2"></i>Cerrar Sesión
                                         </button>
@@ -112,7 +118,7 @@ const UsuariosPage = () => {
                                 <div>
                                     <button 
                                         className="btn btn-primary"
-                                        onClick={() => window.location.href = '/usuarios/nuevo'}
+                                        onClick={() => setMostrarFormularioNuevo(true)}
                                     >
                                         <i className="fas fa-plus me-2"></i>
                                         Nuevo Usuario
@@ -128,6 +134,20 @@ const UsuariosPage = () => {
                             <ListaUsuarios />
                         </div>
                     </div>
+
+                    {/* Modal para nuevo usuario */}
+                    {mostrarFormularioNuevo && (
+                        <FormularioUsuario
+                            usuario={null}
+                            modoEdicion={false}
+                            onClose={() => setMostrarFormularioNuevo(false)}
+                            onSuccess={() => {
+                                setMostrarFormularioNuevo(false);
+                                // Aquí podrías recargar la lista de usuarios
+                                window.location.reload();
+                            }}
+                        />
+                    )}
                 </main>
             </div>
         </ProtectedRoute>
