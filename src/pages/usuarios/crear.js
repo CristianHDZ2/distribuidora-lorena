@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../hooks/useAuth';
 import ProtectedRoute from '../../components/Auth/ProtectedRoute';
@@ -70,16 +71,16 @@ const CrearUsuarioPage = () => {
                                 </button>
                                 <ul className="dropdown-menu dropdown-menu-end">
                                     <li>
-                                        <a className="dropdown-item" href="/dashboard">
+                                        <Link href="/dashboard" className="dropdown-item">
                                             <i className="fas fa-tachometer-alt me-2"></i>
                                             Dashboard
-                                        </a>
+                                        </Link>
                                     </li>
                                     <li>
-                                        <a className="dropdown-item" href="/usuarios">
+                                        <Link href="/usuarios" className="dropdown-item">
                                             <i className="fas fa-users me-2"></i>
                                             Lista de Usuarios
-                                        </a>
+                                        </Link>
                                     </li>
                                     <li><hr className="dropdown-divider" /></li>
                                     <li>
@@ -106,14 +107,14 @@ const CrearUsuarioPage = () => {
                     <nav aria-label="breadcrumb">
                         <ol className="breadcrumb mb-0">
                             <li className="breadcrumb-item">
-                                <a href="/dashboard" className="text-decoration-none">
+                                <Link href="/dashboard" className="text-decoration-none">
                                     <i className="fas fa-home"></i> Dashboard
-                                </a>
+                                </Link>
                             </li>
                             <li className="breadcrumb-item">
-                                <a href="/usuarios" className="text-decoration-none">
+                                <Link href="/usuarios" className="text-decoration-none">
                                     <i className="fas fa-users"></i> Usuarios
-                                </a>
+                                </Link>
                             </li>
                             <li className="breadcrumb-item active" aria-current="page">
                                 <i className="fas fa-plus"></i> Crear Usuario
@@ -162,13 +163,10 @@ const CrearUsuarioPage = () => {
                             
                             {/* Botones de acción */}
                             <div className="d-flex justify-content-between mt-3">
-                                <button 
-                                    className="btn btn-outline-secondary"
-                                    onClick={handleClose}
-                                >
+                                <Link href="/usuarios" className="btn btn-outline-secondary">
                                     <i className="fas fa-arrow-left me-2"></i>
                                     Volver a Lista de Usuarios
-                                </button>
+                                </Link>
                                 
                                 <div className="text-muted small">
                                     <i className="fas fa-shield-alt me-1"></i>

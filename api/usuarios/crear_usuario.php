@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 // Verificar sesión
 session_start();
-if (!isset($_SESSION['user_id']) || $_SESSION['user_tipo'] !== 'administrador') {
+if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'administrador') {
     http_response_code(401);
     echo json_encode(['error' => 'No autorizado. Solo administradores pueden crear usuarios']);
     exit;
@@ -24,7 +24,7 @@ try {
     
     if (empty($data['dui'])) {
         $errores[] = 'El DUI es requerido';
-    } elseif (!validarDUI($data['dui'])) {
+    } elseif (!validateDUI($data['dui'])) {
         $errores[] = 'Formato de DUI inválido. Debe ser 12345678-9';
     }
     
@@ -48,7 +48,7 @@ try {
     
     if (empty($data['email'])) {
         $errores[] = 'El email es requerido';
-    } elseif (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+    } elseif (!validateEmail($data['email'])) {
         $errores[] = 'Formato de email inválido';
     }
     
@@ -70,7 +70,8 @@ try {
         exit;
     }
     
-    $conexion = obtenerConexion();
+    $database = new Database();
+    $conexion = $database->getConnection();
     
     // Verificar si el DUI ya existe
     $stmt = $conexion->prepare("SELECT id FROM usuarios WHERE dui = ?");
@@ -82,7 +83,7 @@ try {
     }
     
     // Verificar si el email ya existe
-    $stmt = $conexion->prepare("SELECT id FROM usuarios WHERE email = ?");
+    $stmt = $conexion->prepare("SELECT id FROM usuarios WHERE correo_electronico = ?");
     $stmt->execute([$data['email']]);
     if ($stmt->fetch()) {
         http_response_code(400);
@@ -91,38 +92,48 @@ try {
     }
     
     // Encriptar contraseña
-    $passwordHash = password_hash($data['password'], PASSWORD_DEFAULT);
+    $passwordHash = hashPassword($data['password']);
+    
+    // Crear nombre completo
+    $nombreCompleto = $data['nombre'] . ' ' . $data['apellido'];
+    
+    // Generar nombre de usuario basado en DUI
+    $nombreUsuario = generateUsername($data['dui']);
     
     // Insertar usuario
     $stmt = $conexion->prepare("
         INSERT INTO usuarios 
-        (dui, nombre, apellido, telefono, email, tipo_usuario, password, estado, fecha_creacion, creado_por) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'activo', NOW(), ?)
+        (dui, nombre_completo, nombre_usuario, correo_electronico, telefono, tipo_usuario, password, activo, fecha_creacion) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, NOW())
     ");
     
     $resultado = $stmt->execute([
         $data['dui'],
-        $data['nombre'],
-        $data['apellido'],
-        $data['telefono'],
+        $nombreCompleto,
+        $nombreUsuario,
         $data['email'],
+        $data['telefono'],
         $data['tipo_usuario'],
-        $passwordHash,
-        $_SESSION['user_id']
+        $passwordHash
     ]);
     
     if ($resultado) {
         $nuevoUsuarioId = $conexion->lastInsertId();
         
+        // Registrar actividad
+        logActivity($_SESSION['user_id'], 'create_user', "Creó usuario: $nombreCompleto (DUI: {$data['dui']})");
+        
         // Obtener los datos del usuario creado
         $stmt = $conexion->prepare("
-            SELECT id, dui, nombre, apellido, telefono, email, tipo_usuario, estado, 
+            SELECT id, dui, nombre_completo, correo_electronico, telefono, tipo_usuario, activo,
                    DATE_FORMAT(fecha_creacion, '%d/%m/%Y %H:%i') as fecha_creacion_formato
             FROM usuarios 
             WHERE id = ?
         ");
         $stmt->execute([$nuevoUsuarioId]);
         $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $database->closeConnection();
         
         echo json_encode([
             'success' => true,
@@ -134,30 +145,11 @@ try {
     }
     
 } catch (Exception $e) {
+    if (isset($database)) {
+        $database->closeConnection();
+    }
+    logError("Error creating user: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['error' => 'Error interno del servidor: ' . $e->getMessage()]);
-}
-
-function validarDUI($dui) {
-    // Formato: 12345678-9
-    if (!preg_match('/^\d{8}-\d$/', $dui)) {
-        return false;
-    }
-    
-    // Extraer números para validación
-    $numeros = str_replace('-', '', $dui);
-    $digitos = str_split($numeros);
-    $digitoVerificador = array_pop($digitos);
-    
-    // Algoritmo de validación DUI El Salvador
-    $suma = 0;
-    for ($i = 0; $i < 8; $i++) {
-        $suma += $digitos[$i] * (9 - $i);
-    }
-    
-    $residuo = $suma % 10;
-    $digitoCalculado = $residuo == 0 ? 0 : 10 - $residuo;
-    
-    return $digitoCalculado == $digitoVerificador;
 }
 ?>

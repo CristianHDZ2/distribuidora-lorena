@@ -26,42 +26,38 @@ try {
     }
     
     // Solo administradores pueden ver datos de otros usuarios
-    if ($usuarioId != $_SESSION['user_id'] && $_SESSION['user_tipo'] !== 'administrador') {
+    if ($usuarioId != $_SESSION['user_id'] && $_SESSION['user_type'] !== 'administrador') {
         http_response_code(403);
         echo json_encode(['error' => 'No tienes permisos para ver datos de otro usuario']);
         exit;
     }
     
-    $conexion = obtenerConexion();
+    $database = new Database();
+    $conexion = $database->getConnection();
     
     // Obtener datos básicos del usuario
     $stmt = $conexion->prepare("
         SELECT 
             u.id,
             u.dui,
-            u.nombre,
-            u.apellido,
-            CONCAT(u.nombre, ' ', u.apellido) as nombre_completo,
+            u.nombre_completo,
+            u.correo_electronico as email,
             u.telefono,
-            u.email,
+            u.direccion,
             u.tipo_usuario,
-            u.estado,
-            u.foto_perfil,
+            CASE WHEN u.activo = 1 THEN 'activo' ELSE 'inactivo' END as estado,
+            u.foto,
             DATE_FORMAT(u.fecha_creacion, '%d/%m/%Y %H:%i') as fecha_creacion_formato,
-            DATE_FORMAT(u.fecha_modificacion, '%d/%m/%Y %H:%i') as fecha_modificacion_formato,
-            DATE_FORMAT(u.ultimo_acceso, '%d/%m/%Y %H:%i') as ultimo_acceso_formato,
+            DATE_FORMAT(u.fecha_actualizacion, '%d/%m/%Y %H:%i') as fecha_modificacion_formato,
+            DATE_FORMAT(u.fecha_actualizacion, '%d/%m/%Y %H:%i') as ultimo_acceso_formato,
             CASE 
-                WHEN u.ultimo_acceso IS NULL THEN 'Nunca'
-                WHEN u.ultimo_acceso >= DATE_SUB(NOW(), INTERVAL 5 MINUTE) THEN 'En línea'
-                WHEN u.ultimo_acceso >= DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 'Hoy'
-                WHEN u.ultimo_acceso >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 'Esta semana'
+                WHEN u.fecha_actualizacion IS NULL THEN 'Nunca'
+                WHEN u.fecha_actualizacion >= DATE_SUB(NOW(), INTERVAL 5 MINUTE) THEN 'En línea'
+                WHEN u.fecha_actualizacion >= DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 'Hoy'
+                WHEN u.fecha_actualizacion >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 'Esta semana'
                 ELSE 'Hace tiempo'
-            END as estado_conexion,
-            creador.nombre as creado_por_nombre,
-            modificador.nombre as modificado_por_nombre
+            END as estado_conexion
         FROM usuarios u
-        LEFT JOIN usuarios creador ON u.creado_por = creador.id
-        LEFT JOIN usuarios modificador ON u.modificado_por = modificador.id
         WHERE u.id = ?
     ");
     $stmt->execute([$usuarioId]);
@@ -73,9 +69,29 @@ try {
         exit;
     }
     
+    // Separar nombre y apellido
+    $nombreParts = explode(' ', $usuario['nombre_completo']);
+    $usuario['nombre'] = $nombreParts[0];
+    $usuario['apellido'] = implode(' ', array_slice($nombreParts, 1));
+    $usuario['foto_perfil'] = $usuario['foto'];
+    
     // Obtener estadísticas del usuario (solo si es despachador)
     $estadisticas = null;
     if ($usuario['tipo_usuario'] === 'despachador') {
+        // Por ahora estadísticas básicas, cuando implementes despachos completar estas consultas
+        $estadisticas = [
+            'total_despachos' => 0,
+            'despachos_completados' => 0,
+            'despachos_hoy' => 0,
+            'despachos_semana' => 0,
+            'ventas_totales' => 0,
+            'promedio_venta' => 0,
+            'ultimo_despacho' => null,
+            'ultimo_despacho_formato' => null
+        ];
+        
+        // Cuando implementes la tabla despachos, descomenta esto:
+        /*
         $stmt = $conexion->prepare("
             SELECT 
                 COUNT(DISTINCT d.id) as total_despachos,
@@ -94,49 +110,26 @@ try {
         if ($estadisticas['ultimo_despacho']) {
             $estadisticas['ultimo_despacho_formato'] = date('d/m/Y H:i', strtotime($estadisticas['ultimo_despacho']));
         }
+        */
     }
     
     // Obtener actividad reciente del usuario
     $actividadReciente = [];
     
-    // Despachos recientes
+    // Actividad de logs del sistema
     $stmt = $conexion->prepare("
         SELECT 
-            'despacho' as tipo,
-            CONCAT('Despacho #', d.id, ' - Ruta: ', r.nombre) as descripcion,
-            d.fecha_salida as fecha,
-            d.estado
-        FROM despachos d
-        JOIN rutas r ON d.ruta_id = r.id
-        WHERE d.usuario_id = ?
-        ORDER BY d.fecha_salida DESC
+            'sistema' as tipo,
+            CONCAT('Acción: ', action, ' - ', details) as descripcion,
+            created_at as fecha,
+            'completado' as estado
+        FROM activity_logs
+        WHERE user_id = ?
+        ORDER BY created_at DESC
         LIMIT 5
     ");
     $stmt->execute([$usuarioId]);
-    $actividadReciente = array_merge($actividadReciente, $stmt->fetchAll(PDO::FETCH_ASSOC));
-    
-    // Movimientos de inventario (si es administrador)
-    if ($usuario['tipo_usuario'] === 'administrador') {
-        $stmt = $conexion->prepare("
-            SELECT 
-                'inventario' as tipo,
-                CONCAT(mi.tipo_movimiento, ' - ', p.nombre) as descripcion,
-                mi.fecha_movimiento as fecha,
-                'completado' as estado
-            FROM movimientos_inventario mi
-            JOIN productos p ON mi.producto_id = p.id
-            WHERE mi.usuario_id = ?
-            ORDER BY mi.fecha_movimiento DESC
-            LIMIT 3
-        ");
-        $stmt->execute([$usuarioId]);
-        $actividadReciente = array_merge($actividadReciente, $stmt->fetchAll(PDO::FETCH_ASSOC));
-    }
-    
-    // Ordenar actividad por fecha
-    usort($actividadReciente, function($a, $b) {
-        return strtotime($b['fecha']) - strtotime($a['fecha']);
-    });
+    $actividadReciente = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Formatear fechas de actividad
     foreach ($actividadReciente as &$actividad) {
@@ -145,9 +138,11 @@ try {
     
     // URL de la foto si existe
     $urlFoto = null;
-    if ($usuario['foto_perfil']) {
-        $urlFoto = '/api/uploads/usuarios/' . $usuario['foto_perfil'];
+    if ($usuario['foto']) {
+        $urlFoto = getFileUrl('usuarios/' . $usuario['foto']);
     }
+    
+    $database->closeConnection();
     
     echo json_encode([
         'success' => true,
@@ -158,6 +153,10 @@ try {
     ]);
     
 } catch (Exception $e) {
+    if (isset($database)) {
+        $database->closeConnection();
+    }
+    logError("Error fetching user details: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['error' => 'Error interno del servidor: ' . $e->getMessage()]);
 }

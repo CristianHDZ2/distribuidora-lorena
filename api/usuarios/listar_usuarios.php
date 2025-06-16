@@ -10,14 +10,15 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 
 // Verificar sesión
 session_start();
-if (!isset($_SESSION['user_id']) || $_SESSION['user_tipo'] !== 'administrador') {
+if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'administrador') {
     http_response_code(401);
     echo json_encode(['error' => 'No autorizado. Solo administradores pueden listar usuarios']);
     exit;
 }
 
 try {
-    $conexion = obtenerConexion();
+    $database = new Database();
+    $conexion = $database->getConnection();
     
     // Parámetros de búsqueda y paginación
     $busqueda = $_GET['busqueda'] ?? '';
@@ -32,9 +33,9 @@ try {
     $params = [];
     
     if (!empty($busqueda)) {
-        $whereConditions[] = "(nombre LIKE ? OR apellido LIKE ? OR dui LIKE ? OR email LIKE ?)";
+        $whereConditions[] = "(nombre_completo LIKE ? OR dui LIKE ? OR correo_electronico LIKE ?)";
         $busquedaParam = "%$busqueda%";
-        $params = array_merge($params, [$busquedaParam, $busquedaParam, $busquedaParam, $busquedaParam]);
+        $params = array_merge($params, [$busquedaParam, $busquedaParam, $busquedaParam]);
     }
     
     if (!empty($tipo) && in_array($tipo, ['administrador', 'despachador'])) {
@@ -42,9 +43,12 @@ try {
         $params[] = $tipo;
     }
     
-    if (!empty($estado) && in_array($estado, ['activo', 'inactivo'])) {
-        $whereConditions[] = "estado = ?";
-        $params[] = $estado;
+    if (!empty($estado)) {
+        if ($estado === 'activo') {
+            $whereConditions[] = "activo = 1";
+        } elseif ($estado === 'inactivo') {
+            $whereConditions[] = "activo = 0";
+        }
     }
     
     $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
@@ -63,26 +67,22 @@ try {
         SELECT 
             u.id,
             u.dui,
-            u.nombre,
-            u.apellido,
-            CONCAT(u.nombre, ' ', u.apellido) as nombre_completo,
+            u.nombre_completo,
+            u.correo_electronico as email,
             u.telefono,
-            u.email,
             u.tipo_usuario,
-            u.estado,
-            u.foto_perfil,
+            CASE WHEN u.activo = 1 THEN 'activo' ELSE 'inactivo' END as estado,
+            u.foto,
             DATE_FORMAT(u.fecha_creacion, '%d/%m/%Y %H:%i') as fecha_creacion_formato,
-            DATE_FORMAT(u.ultimo_acceso, '%d/%m/%Y %H:%i') as ultimo_acceso_formato,
+            DATE_FORMAT(u.fecha_actualizacion, '%d/%m/%Y %H:%i') as ultimo_acceso_formato,
             CASE 
-                WHEN u.ultimo_acceso IS NULL THEN 'Nunca'
-                WHEN u.ultimo_acceso >= DATE_SUB(NOW(), INTERVAL 5 MINUTE) THEN 'En línea'
-                WHEN u.ultimo_acceso >= DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 'Hoy'
-                WHEN u.ultimo_acceso >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 'Esta semana'
+                WHEN u.fecha_actualizacion IS NULL THEN 'Nunca'
+                WHEN u.fecha_actualizacion >= DATE_SUB(NOW(), INTERVAL 5 MINUTE) THEN 'En línea'
+                WHEN u.fecha_actualizacion >= DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 'Hoy'
+                WHEN u.fecha_actualizacion >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 'Esta semana'
                 ELSE 'Hace tiempo'
-            END as estado_conexion,
-            creador.nombre as creado_por_nombre
+            END as estado_conexion
         FROM usuarios u
-        LEFT JOIN usuarios creador ON u.creado_por = creador.id
         $whereClause
         ORDER BY u.fecha_creacion DESC
         LIMIT ? OFFSET ?
@@ -93,16 +93,24 @@ try {
     $stmt->execute($params);
     $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
+    // Agregar URLs de fotos
+    foreach ($usuarios as &$usuario) {
+        $usuario['foto_perfil'] = $usuario['foto'];
+        $usuario['nombre'] = explode(' ', $usuario['nombre_completo'])[0];
+        $usuario['apellido'] = implode(' ', array_slice(explode(' ', $usuario['nombre_completo']), 1));
+        unset($usuario['foto']);
+    }
+    
     // Estadísticas adicionales
     $stmtStats = $conexion->prepare("
         SELECT 
             COUNT(*) as total_usuarios,
             SUM(CASE WHEN tipo_usuario = 'administrador' THEN 1 ELSE 0 END) as administradores,
             SUM(CASE WHEN tipo_usuario = 'despachador' THEN 1 ELSE 0 END) as despachadores,
-            SUM(CASE WHEN estado = 'activo' THEN 1 ELSE 0 END) as activos,
-            SUM(CASE WHEN estado = 'inactivo' THEN 1 ELSE 0 END) as inactivos,
-            SUM(CASE WHEN ultimo_acceso >= DATE_SUB(NOW(), INTERVAL 5 MINUTE) THEN 1 ELSE 0 END) as en_linea,
-            SUM(CASE WHEN ultimo_acceso >= DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 1 ELSE 0 END) as activos_hoy
+            SUM(CASE WHEN activo = 1 THEN 1 ELSE 0 END) as activos,
+            SUM(CASE WHEN activo = 0 THEN 1 ELSE 0 END) as inactivos,
+            SUM(CASE WHEN fecha_actualizacion >= DATE_SUB(NOW(), INTERVAL 5 MINUTE) THEN 1 ELSE 0 END) as en_linea,
+            SUM(CASE WHEN fecha_actualizacion >= DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 1 ELSE 0 END) as activos_hoy
         FROM usuarios
     ");
     $stmtStats->execute();
@@ -110,6 +118,8 @@ try {
     
     // Calcular paginación
     $totalPaginas = ceil($totalRegistros / $porPagina);
+    
+    $database->closeConnection();
     
     echo json_encode([
         'success' => true,
@@ -131,6 +141,10 @@ try {
     ]);
     
 } catch (Exception $e) {
+    if (isset($database)) {
+        $database->closeConnection();
+    }
+    logError("Error listing users: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['error' => 'Error interno del servidor: ' . $e->getMessage()]);
 }

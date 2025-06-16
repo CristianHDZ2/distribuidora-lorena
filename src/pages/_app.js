@@ -1,8 +1,6 @@
 // src/pages/_app.js
 import '@/styles/globals.css'
 import { useEffect } from 'react'
-import { ToastContainer } from 'react-toastify'
-import 'react-toastify/dist/ReactToastify.css'
 import Head from 'next/head'
 import Script from 'next/script'
 import { AuthProvider } from '../hooks/useAuth'
@@ -13,8 +11,12 @@ export default function App({ Component, pageProps }) {
     const loadBootstrap = async () => {
       if (typeof window !== 'undefined') {
         // Cargar Bootstrap JS dinámicamente
-        const { default: bootstrap } = await import('bootstrap/dist/js/bootstrap.bundle.min.js')
-        window.bootstrap = bootstrap
+        try {
+          const { default: bootstrap } = await import('bootstrap/dist/js/bootstrap.bundle.min.js')
+          window.bootstrap = bootstrap
+        } catch (error) {
+          console.log('Bootstrap ya está cargado o no disponible')
+        }
       }
     }
     
@@ -52,28 +54,12 @@ export default function App({ Component, pageProps }) {
       />
       
       <Script
-        src="https://kit.fontawesome.com/your-kit-id.js"
+        src="https://kit.fontawesome.com/a076d05399.js"
         strategy="lazyOnload"
         crossOrigin="anonymous"
       />
 
       <Component {...pageProps} />
-
-      {/* Contenedor de notificaciones Toast */}
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-        toastClassName="custom-toast"
-        bodyClassName="custom-toast-body"
-      />
     </AuthProvider>
   )
 }

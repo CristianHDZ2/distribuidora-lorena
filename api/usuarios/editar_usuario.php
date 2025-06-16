@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'PUT') {
 
 // Verificar sesión
 session_start();
-if (!isset($_SESSION['user_id']) || $_SESSION['user_tipo'] !== 'administrador') {
+if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'administrador') {
     http_response_code(401);
     echo json_encode(['error' => 'No autorizado. Solo administradores pueden editar usuarios']);
     exit;
@@ -25,10 +25,11 @@ try {
         exit;
     }
     
-    $conexion = obtenerConexion();
+    $database = new Database();
+    $conexion = $database->getConnection();
     
     // Verificar que el usuario existe
-    $stmt = $conexion->prepare("SELECT id, dui, email FROM usuarios WHERE id = ?");
+    $stmt = $conexion->prepare("SELECT id, dui, correo_electronico, nombre_completo FROM usuarios WHERE id = ?");
     $stmt->execute([$data['id']]);
     $usuarioExistente = $stmt->fetch(PDO::FETCH_ASSOC);
     
@@ -47,7 +48,7 @@ try {
     if (isset($data['dui']) && $data['dui'] !== $usuarioExistente['dui']) {
         if (empty($data['dui'])) {
             $errores[] = 'El DUI no puede estar vacío';
-        } elseif (!validarDUI($data['dui'])) {
+        } elseif (!validateDUI($data['dui'])) {
             $errores[] = 'Formato de DUI inválido';
         } else {
             // Verificar que no exista otro usuario con este DUI
@@ -62,27 +63,23 @@ try {
         }
     }
     
-    // Validar nombre
-    if (isset($data['nombre'])) {
-        if (empty($data['nombre'])) {
+    // Validar nombre completo
+    if (isset($data['nombre']) || isset($data['apellido'])) {
+        $nombre = $data['nombre'] ?? explode(' ', $usuarioExistente['nombre_completo'])[0];
+        $apellido = $data['apellido'] ?? implode(' ', array_slice(explode(' ', $usuarioExistente['nombre_completo']), 1));
+        
+        if (empty($nombre)) {
             $errores[] = 'El nombre no puede estar vacío';
-        } elseif (strlen($data['nombre']) < 2) {
+        } elseif (strlen($nombre) < 2) {
             $errores[] = 'El nombre debe tener al menos 2 caracteres';
-        } else {
-            $camposActualizar[] = "nombre = ?";
-            $parametros[] = $data['nombre'];
-        }
-    }
-    
-    // Validar apellido
-    if (isset($data['apellido'])) {
-        if (empty($data['apellido'])) {
+        } elseif (empty($apellido)) {
             $errores[] = 'El apellido no puede estar vacío';
-        } elseif (strlen($data['apellido']) < 2) {
+        } elseif (strlen($apellido) < 2) {
             $errores[] = 'El apellido debe tener al menos 2 caracteres';
         } else {
-            $camposActualizar[] = "apellido = ?";
-            $parametros[] = $data['apellido'];
+            $nombreCompleto = $nombre . ' ' . $apellido;
+            $camposActualizar[] = "nombre_completo = ?";
+            $parametros[] = $nombreCompleto;
         }
     }
     
@@ -99,19 +96,19 @@ try {
     }
     
     // Validar email
-    if (isset($data['email']) && $data['email'] !== $usuarioExistente['email']) {
+    if (isset($data['email']) && $data['email'] !== $usuarioExistente['correo_electronico']) {
         if (empty($data['email'])) {
             $errores[] = 'El email no puede estar vacío';
-        } elseif (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+        } elseif (!validateEmail($data['email'])) {
             $errores[] = 'Formato de email inválido';
         } else {
             // Verificar que no exista otro usuario con este email
-            $stmt = $conexion->prepare("SELECT id FROM usuarios WHERE email = ? AND id != ?");
+            $stmt = $conexion->prepare("SELECT id FROM usuarios WHERE correo_electronico = ? AND id != ?");
             $stmt->execute([$data['email'], $data['id']]);
             if ($stmt->fetch()) {
                 $errores[] = 'Ya existe otro usuario con este email';
             } else {
-                $camposActualizar[] = "email = ?";
+                $camposActualizar[] = "correo_electronico = ?";
                 $parametros[] = $data['email'];
             }
         }
@@ -129,12 +126,9 @@ try {
     
     // Validar estado
     if (isset($data['estado'])) {
-        if (!in_array($data['estado'], ['activo', 'inactivo'])) {
-            $errores[] = 'Estado inválido';
-        } else {
-            $camposActualizar[] = "estado = ?";
-            $parametros[] = $data['estado'];
-        }
+        $activo = $data['estado'] === 'activo' ? 1 : 0;
+        $camposActualizar[] = "activo = ?";
+        $parametros[] = $activo;
     }
     
     // Validar nueva contraseña si se proporciona
@@ -143,7 +137,7 @@ try {
             $errores[] = 'La nueva contraseña debe tener al menos 6 caracteres';
         } else {
             $camposActualizar[] = "password = ?";
-            $parametros[] = password_hash($data['nueva_password'], PASSWORD_DEFAULT);
+            $parametros[] = hashPassword($data['nueva_password']);
         }
     }
     
@@ -160,9 +154,7 @@ try {
     }
     
     // Agregar campos de auditoría
-    $camposActualizar[] = "fecha_modificacion = NOW()";
-    $camposActualizar[] = "modificado_por = ?";
-    $parametros[] = $_SESSION['user_id'];
+    $camposActualizar[] = "fecha_actualizacion = NOW()";
     $parametros[] = $data['id'];
     
     // Actualizar usuario
@@ -171,17 +163,28 @@ try {
     $resultado = $stmt->execute($parametros);
     
     if ($resultado) {
+        // Registrar actividad
+        logActivity($_SESSION['user_id'], 'update_user', "Actualizó usuario ID: {$data['id']}");
+        
         // Obtener los datos actualizados del usuario
         $stmt = $conexion->prepare("
             SELECT 
-                id, dui, nombre, apellido, telefono, email, tipo_usuario, estado,
+                id, dui, nombre_completo, correo_electronico as email, telefono, tipo_usuario, 
+                CASE WHEN activo = 1 THEN 'activo' ELSE 'inactivo' END as estado,
                 DATE_FORMAT(fecha_creacion, '%d/%m/%Y %H:%i') as fecha_creacion_formato,
-                DATE_FORMAT(fecha_modificacion, '%d/%m/%Y %H:%i') as fecha_modificacion_formato
+                DATE_FORMAT(fecha_actualizacion, '%d/%m/%Y %H:%i') as fecha_modificacion_formato
             FROM usuarios 
             WHERE id = ?
         ");
         $stmt->execute([$data['id']]);
         $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Separar nombre y apellido
+        $nombreParts = explode(' ', $usuario['nombre_completo']);
+        $usuario['nombre'] = $nombreParts[0];
+        $usuario['apellido'] = implode(' ', array_slice($nombreParts, 1));
+        
+        $database->closeConnection();
         
         echo json_encode([
             'success' => true,
@@ -193,30 +196,11 @@ try {
     }
     
 } catch (Exception $e) {
+    if (isset($database)) {
+        $database->closeConnection();
+    }
+    logError("Error updating user: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['error' => 'Error interno del servidor: ' . $e->getMessage()]);
-}
-
-function validarDUI($dui) {
-    // Formato: 12345678-9
-    if (!preg_match('/^\d{8}-\d$/', $dui)) {
-        return false;
-    }
-    
-    // Extraer números para validación
-    $numeros = str_replace('-', '', $dui);
-    $digitos = str_split($numeros);
-    $digitoVerificador = array_pop($digitos);
-    
-    // Algoritmo de validación DUI El Salvador
-    $suma = 0;
-    for ($i = 0; $i < 8; $i++) {
-        $suma += $digitos[$i] * (9 - $i);
-    }
-    
-    $residuo = $suma % 10;
-    $digitoCalculado = $residuo == 0 ? 0 : 10 - $residuo;
-    
-    return $digitoCalculado == $digitoVerificador;
 }
 ?>

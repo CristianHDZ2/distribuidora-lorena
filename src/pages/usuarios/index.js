@@ -1,5 +1,6 @@
 import React from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { useAuth } from '../../hooks/useAuth';
 import ProtectedRoute from '../../components/Auth/ProtectedRoute';
 import ListaUsuarios from '../../components/Usuarios/ListaUsuarios';
@@ -57,10 +58,10 @@ const UsuariosPage = () => {
                                 </button>
                                 <ul className="dropdown-menu dropdown-menu-end">
                                     <li>
-                                        <a className="dropdown-item" href="/dashboard">
+                                        <Link href="/dashboard" className="dropdown-item">
                                             <i className="fas fa-tachometer-alt me-2"></i>
                                             Dashboard
-                                        </a>
+                                        </Link>
                                     </li>
                                     <li><hr className="dropdown-divider" /></li>
                                     <li>
@@ -87,9 +88,9 @@ const UsuariosPage = () => {
                     <nav aria-label="breadcrumb">
                         <ol className="breadcrumb mb-0">
                             <li className="breadcrumb-item">
-                                <a href="/dashboard" className="text-decoration-none">
+                                <Link href="/dashboard" className="text-decoration-none">
                                     <i className="fas fa-home"></i> Dashboard
-                                </a>
+                                </Link>
                             </li>
                             <li className="breadcrumb-item active" aria-current="page">
                                 <i className="fas fa-users"></i> Usuarios

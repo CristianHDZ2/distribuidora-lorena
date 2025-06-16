@@ -171,6 +171,7 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
+    token: localStorage?.getItem('auth_token'),
     loading,
     isLoggedIn,
     login,
@@ -190,7 +191,7 @@ export const AuthProvider = ({ children }) => {
 }
 
 // Hook para usar el contexto de autenticación
-const useAuth = () => {
+export const useAuth = () => {
   const context = useContext(AuthContext)
   
   if (!context) {
@@ -200,4 +201,5 @@ const useAuth = () => {
   return context
 }
 
+// Export default también para compatibilidad
 export default useAuth

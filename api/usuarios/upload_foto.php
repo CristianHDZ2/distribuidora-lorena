@@ -34,13 +34,14 @@ try {
     }
     
     // Solo administradores pueden subir fotos de otros usuarios
-    if ($usuarioId != $_SESSION['user_id'] && $_SESSION['user_tipo'] !== 'administrador') {
+    if ($usuarioId != $_SESSION['user_id'] && $_SESSION['user_type'] !== 'administrador') {
         http_response_code(403);
         echo json_encode(['error' => 'No tienes permisos para subir foto de otro usuario']);
         exit;
     }
     
-    $conexion = obtenerConexion();
+    $database = new Database();
+    $conexion = $database->getConnection();
     
     // Verificar que el usuario existe
     $stmt = $conexion->prepare("SELECT id FROM usuarios WHERE id = ?");
@@ -82,25 +83,20 @@ try {
     }
     
     // Crear directorio si no existe
-    $directorioUploads = '../uploads/usuarios/';
-    if (!file_exists($directorioUploads)) {
-        if (!mkdir($directorioUploads, 0755, true)) {
-            throw new Exception('No se pudo crear el directorio de uploads');
-        }
-    }
+    $directorioUploads = ensureUploadDirectory('usuarios');
     
     // Generar nombre único para el archivo
     $extension = pathinfo($nombreArchivo, PATHINFO_EXTENSION);
     $nombreFinal = $usuarioId . '_' . time() . '.' . $extension;
-    $rutaCompleta = $directorioUploads . $nombreFinal;
+    $rutaCompleta = $directorioUploads . '/' . $nombreFinal;
     
     // Eliminar foto anterior si existe
-    $stmt = $conexion->prepare("SELECT foto_perfil FROM usuarios WHERE id = ?");
+    $stmt = $conexion->prepare("SELECT foto FROM usuarios WHERE id = ?");
     $stmt->execute([$usuarioId]);
     $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    if ($usuario && $usuario['foto_perfil']) {
-        $fotoAnterior = $directorioUploads . $usuario['foto_perfil'];
+    if ($usuario && $usuario['foto']) {
+        $fotoAnterior = $directorioUploads . '/' . $usuario['foto'];
         if (file_exists($fotoAnterior)) {
             unlink($fotoAnterior);
         }
@@ -114,17 +110,22 @@ try {
         // Actualizar base de datos
         $stmt = $conexion->prepare("
             UPDATE usuarios 
-            SET foto_perfil = ?, fecha_modificacion = NOW() 
+            SET foto = ?, fecha_actualizacion = NOW() 
             WHERE id = ?
         ");
         $resultado = $stmt->execute([$nombreFinal, $usuarioId]);
         
         if ($resultado) {
+            // Registrar actividad
+            logActivity($_SESSION['user_id'], 'upload_photo', "Subió foto para usuario ID: $usuarioId");
+            
+            $database->closeConnection();
+            
             echo json_encode([
                 'success' => true,
                 'message' => 'Foto subida exitosamente',
                 'foto_perfil' => $nombreFinal,
-                'url_foto' => '/api/uploads/usuarios/' . $nombreFinal
+                'url_foto' => getFileUrl('usuarios/' . $nombreFinal)
             ]);
         } else {
             // Si falla la BD, eliminar archivo
@@ -136,6 +137,10 @@ try {
     }
     
 } catch (Exception $e) {
+    if (isset($database)) {
+        $database->closeConnection();
+    }
+    logError("Error uploading photo: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['error' => 'Error interno del servidor: ' . $e->getMessage()]);
 }

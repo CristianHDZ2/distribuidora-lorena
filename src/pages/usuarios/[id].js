@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../hooks/useAuth';
 import ProtectedRoute from '../../components/Auth/ProtectedRoute';
@@ -158,12 +159,9 @@ const DetalleUsuarioPage = () => {
                             <i className="fas fa-exclamation-triangle fa-2x mb-3"></i>
                             <h5>Error al cargar usuario</h5>
                             <p>{error}</p>
-                            <button 
-                                className="btn btn-primary"
-                                onClick={() => router.push('/usuarios')}
-                            >
+                            <Link href="/usuarios" className="btn btn-primary">
                                 Volver a Lista de Usuarios
-                            </button>
+                            </Link>
                         </div>
                     </div>
                 </div>
@@ -221,16 +219,16 @@ const DetalleUsuarioPage = () => {
                                 </button>
                                 <ul className="dropdown-menu dropdown-menu-end">
                                     <li>
-                                        <a className="dropdown-item" href="/dashboard">
+                                        <Link href="/dashboard" className="dropdown-item">
                                             <i className="fas fa-tachometer-alt me-2"></i>
                                             Dashboard
-                                        </a>
+                                        </Link>
                                     </li>
                                     <li>
-                                        <a className="dropdown-item" href="/usuarios">
+                                        <Link href="/usuarios" className="dropdown-item">
                                             <i className="fas fa-users me-2"></i>
                                             Lista de Usuarios
-                                        </a>
+                                        </Link>
                                     </li>
                                     <li><hr className="dropdown-divider" /></li>
                                     <li>
@@ -257,14 +255,14 @@ const DetalleUsuarioPage = () => {
                     <nav aria-label="breadcrumb">
                         <ol className="breadcrumb mb-0">
                             <li className="breadcrumb-item">
-                                <a href="/dashboard" className="text-decoration-none">
+                                <Link href="/dashboard" className="text-decoration-none">
                                     <i className="fas fa-home"></i> Dashboard
-                                </a>
+                                </Link>
                             </li>
                             <li className="breadcrumb-item">
-                                <a href="/usuarios" className="text-decoration-none">
+                                <Link href="/usuarios" className="text-decoration-none">
                                     <i className="fas fa-users"></i> Usuarios
-                                </a>
+                                </Link>
                             </li>
                             <li className="breadcrumb-item active" aria-current="page">
                                 <i className="fas fa-user"></i> {usuario?.nombre_completo || 'Usuario'}
@@ -498,12 +496,6 @@ const DetalleUsuarioPage = () => {
                                                 <div className="row g-3">
                                                     <div className="col-6">
                                                         <div className="text-center p-3 bg-light rounded">
-                                                            <div className="h4 mb-1 text-primary">{estadisticas.total_despachos}</div>
-                                                            <small className="text-muted">Total Despachos</small>
-                                                        </div>
-                                                    </div>
-                                                    <div className="col-6">
-                                                        <div className="text-center p-3 bg-light rounded">
                                                             <div className="h4 mb-1 text-success">{estadisticas.despachos_completados}</div>
                                                             <small className="text-muted">Completados</small>
                                                         </div>
@@ -606,13 +598,10 @@ const DetalleUsuarioPage = () => {
                             <div className="row mt-4">
                                 <div className="col">
                                     <div className="d-flex justify-content-between">
-                                        <button 
-                                            className="btn btn-outline-secondary"
-                                            onClick={() => router.push('/usuarios')}
-                                        >
+                                        <Link href="/usuarios" className="btn btn-outline-secondary">
                                             <i className="fas fa-arrow-left me-2"></i>
                                             Volver a Lista de Usuarios
-                                        </button>
+                                        </Link>
                                         
                                         <div>
                                             <button

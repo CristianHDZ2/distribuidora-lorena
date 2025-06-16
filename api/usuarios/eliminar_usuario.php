@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'DELETE') {
 
 // Verificar sesión
 session_start();
-if (!isset($_SESSION['user_id']) || $_SESSION['user_tipo'] !== 'administrador') {
+if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'administrador') {
     http_response_code(401);
     echo json_encode(['error' => 'No autorizado. Solo administradores pueden eliminar usuarios']);
     exit;
@@ -25,10 +25,11 @@ try {
         exit;
     }
     
-    $conexion = obtenerConexion();
+    $database = new Database();
+    $conexion = $database->getConnection();
     
     // Verificar que el usuario existe
-    $stmt = $conexion->prepare("SELECT id, nombre, apellido, tipo_usuario FROM usuarios WHERE id = ?");
+    $stmt = $conexion->prepare("SELECT id, nombre_completo, tipo_usuario FROM usuarios WHERE id = ?");
     $stmt->execute([$data['id']]);
     $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
     
@@ -47,36 +48,36 @@ try {
     
     // Verificar si el usuario tiene registros relacionados
     $tieneRegistros = false;
-    $tablas = [
-        'despachos' => 'usuario_id',
-        'movimientos_inventario' => 'usuario_id',
-        'facturas' => 'creado_por',
-        'usuarios' => 'creado_por'  // Usuarios creados por este usuario
-    ];
     
-    foreach ($tablas as $tabla => $campo) {
-        $stmt = $conexion->prepare("SELECT COUNT(*) as total FROM $tabla WHERE $campo = ?");
+    // Verificar en activity_logs
+    if (!$tieneRegistros) {
+        $stmt = $conexion->prepare("SELECT COUNT(*) as total FROM activity_logs WHERE user_id = ?");
         $stmt->execute([$data['id']]);
         $count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
-        
         if ($count > 0) {
             $tieneRegistros = true;
-            break;
         }
     }
+    
+    // Verificar otras tablas cuando existan (despachos, etc.)
+    // Cuando implementes otras tablas, agrégalas aquí
     
     if ($tieneRegistros) {
         // Si tiene registros, solo desactivar
         $stmt = $conexion->prepare("
             UPDATE usuarios 
-            SET estado = 'inactivo', 
-                fecha_modificacion = NOW(), 
-                modificado_por = ? 
+            SET activo = 0, 
+                fecha_actualizacion = NOW()
             WHERE id = ?
         ");
-        $resultado = $stmt->execute([$_SESSION['user_id'], $data['id']]);
+        $resultado = $stmt->execute([$data['id']]);
         
         if ($resultado) {
+            // Registrar actividad
+            logActivity($_SESSION['user_id'], 'deactivate_user', "Desactivó usuario: {$usuario['nombre_completo']} (ID: {$data['id']})");
+            
+            $database->closeConnection();
+            
             echo json_encode([
                 'success' => true,
                 'message' => 'Usuario desactivado exitosamente (tiene registros asociados)',
@@ -92,10 +93,18 @@ try {
         
         if ($resultado) {
             // Eliminar foto de perfil si existe
-            $fotoPerfil = "../uploads/usuarios/" . $data['id'] . ".jpg";
-            if (file_exists($fotoPerfil)) {
-                unlink($fotoPerfil);
+            $fotoDir = ensureUploadDirectory('usuarios');
+            $fotoFiles = glob($fotoDir . '/' . $data['id'] . '_*');
+            foreach ($fotoFiles as $fotoFile) {
+                if (file_exists($fotoFile)) {
+                    unlink($fotoFile);
+                }
             }
+            
+            // Registrar actividad
+            logActivity($_SESSION['user_id'], 'delete_user', "Eliminó usuario: {$usuario['nombre_completo']} (ID: {$data['id']})");
+            
+            $database->closeConnection();
             
             echo json_encode([
                 'success' => true,
@@ -108,6 +117,10 @@ try {
     }
     
 } catch (Exception $e) {
+    if (isset($database)) {
+        $database->closeConnection();
+    }
+    logError("Error deleting user: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['error' => 'Error interno del servidor: ' . $e->getMessage()]);
 }
