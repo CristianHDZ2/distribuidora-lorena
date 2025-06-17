@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import ProtectedRoute from '../../components/Auth/ProtectedRoute';
 import FormularioCamion from '../../components/Camiones/FormularioCamion';
@@ -52,14 +53,14 @@ const NuevoCamionPage = () => {
                                     <nav aria-label="breadcrumb">
                                         <ol className="breadcrumb mb-0">
                                             <li className="breadcrumb-item">
-                                                <a href="/dashboard" className="text-decoration-none">
+                                                <Link href="/dashboard" className="text-decoration-none">
                                                     <i className="fas fa-home"></i> Dashboard
-                                                </a>
+                                                </Link>
                                             </li>
                                             <li className="breadcrumb-item">
-                                                <a href="/camiones" className="text-decoration-none">
+                                                <Link href="/camiones" className="text-decoration-none">
                                                     <i className="fas fa-truck"></i> Camiones
-                                                </a>
+                                                </Link>
                                             </li>
                                             <li className="breadcrumb-item active" aria-current="page">
                                                 <i className="fas fa-plus"></i> Nuevo

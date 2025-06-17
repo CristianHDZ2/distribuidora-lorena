@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { camionesAPI } from '../../utils/api';
-import FormularioCamion from './FormularioCamion';
-import DetalleCamion from './DetalleCamion';
 
 const ListaCamiones = () => {
     const [camiones, setCamiones] = useState([]);
@@ -16,12 +14,6 @@ const ListaCamiones = () => {
     const [estadoFilter, setEstadoFilter] = useState('');
     const [marcaFilter, setMarcaFilter] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
-    
-    // Estados de modales
-    const [showFormModal, setShowFormModal] = useState(false);
-    const [showDetailModal, setShowDetailModal] = useState(false);
-    const [selectedCamion, setSelectedCamion] = useState(null);
-    const [isEditing, setIsEditing] = useState(false);
 
     useEffect(() => {
         cargarCamiones();
@@ -38,18 +30,21 @@ const ListaCamiones = () => {
                 marca: marcaFilter
             };
 
+            console.log('🚀 Cargando camiones con parámetros:', params);
             const response = await camionesAPI.listar(params);
+            console.log('✅ Respuesta de la API:', response);
             
             if (response.success) {
                 setCamiones(response.data);
                 setStats(response.stats);
                 setPagination(response.pagination);
                 setFilters(response.filters);
+                setError('');
             } else {
                 setError(response.message || 'Error al cargar camiones');
             }
         } catch (error) {
-            console.error('Error:', error);
+            console.error('❌ Error:', error);
             setError('Error de conexión al cargar camiones');
         } finally {
             setLoading(false);
@@ -75,58 +70,6 @@ const ListaCamiones = () => {
         setCurrentPage(page);
     };
 
-    const handleNuevoCamion = () => {
-        setSelectedCamion(null);
-        setIsEditing(false);
-        setShowFormModal(true);
-    };
-
-    const handleEditarCamion = (camion) => {
-        setSelectedCamion(camion);
-        setIsEditing(true);
-        setShowFormModal(true);
-    };
-
-    const handleVerDetalle = async (camion) => {
-        try {
-            const response = await camionesAPI.obtener(camion.id);
-            if (response.success) {
-                setSelectedCamion(response.data);
-                setShowDetailModal(true);
-            }
-        } catch (error) {
-            console.error('Error:', error);
-        }
-    };
-
-    const handleEliminarCamion = async (camion) => {
-        if (window.confirm(`¿Está seguro de eliminar el camión ${camion.placa}?`)) {
-            try {
-                const response = await camionesAPI.eliminar(camion.id);
-                if (response.success) {
-                    cargarCamiones();
-                    // Toast notification
-                    if (window.bootstrap) {
-                        const toast = new window.bootstrap.Toast(document.getElementById('successToast'));
-                        document.getElementById('toastMessage').textContent = response.message;
-                        toast.show();
-                    }
-                } else {
-                    alert(response.message || 'Error al eliminar camión');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error de conexión al eliminar camión');
-            }
-        }
-    };
-
-    const handleModalSuccess = () => {
-        setShowFormModal(false);
-        setSelectedCamion(null);
-        cargarCamiones();
-    };
-
     const getEstadoBadgeClass = (estado) => {
         switch (estado) {
             case 'activo':
@@ -142,64 +85,13 @@ const ListaCamiones = () => {
         }
     };
 
-    const renderPagination = () => {
-        const pages = [];
-        const maxPages = 5;
-        let startPage = Math.max(1, currentPage - Math.floor(maxPages / 2));
-        let endPage = Math.min(pagination.total_pages, startPage + maxPages - 1);
-
-        if (endPage - startPage < maxPages - 1) {
-            startPage = Math.max(1, endPage - maxPages + 1);
-        }
-
-        for (let i = startPage; i <= endPage; i++) {
-            pages.push(i);
-        }
-
-        return (
-            <nav aria-label="Paginación de camiones">
-                <ul className="pagination pagination-sm justify-content-center">
-                    <li className={`page-item ${!pagination.has_previous ? 'disabled' : ''}`}>
-                        <button 
-                            className="page-link" 
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            disabled={!pagination.has_previous}
-                        >
-                            Anterior
-                        </button>
-                    </li>
-                    
-                    {pages.map(page => (
-                        <li key={page} className={`page-item ${currentPage === page ? 'active' : ''}`}>
-                            <button 
-                                className="page-link" 
-                                onClick={() => handlePageChange(page)}
-                            >
-                                {page}
-                            </button>
-                        </li>
-                    ))}
-                    
-                    <li className={`page-item ${!pagination.has_next ? 'disabled' : ''}`}>
-                        <button 
-                            className="page-link" 
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            disabled={!pagination.has_next}
-                        >
-                            Siguiente
-                        </button>
-                    </li>
-                </ul>
-            </nav>
-        );
-    };
-
     if (loading) {
         return (
             <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
                 <div className="spinner-border text-primary" role="status">
                     <span className="visually-hidden">Cargando...</span>
                 </div>
+                <span className="ms-2">Cargando camiones...</span>
             </div>
         );
     }
@@ -278,7 +170,7 @@ const ListaCamiones = () => {
                         <div className="col-md-6 text-end">
                             <button 
                                 className="btn btn-primary"
-                                onClick={handleNuevoCamion}
+                                onClick={() => alert('Función crear camión en desarrollo')}
                             >
                                 <i className="fas fa-plus me-2"></i>
                                 Nuevo Camión
@@ -403,21 +295,25 @@ const ListaCamiones = () => {
                                                     <div className="btn-group btn-group-sm">
                                                         <button
                                                             className="btn btn-outline-info"
-                                                            onClick={() => handleVerDetalle(camion)}
+                                                            onClick={() => alert(`Ver detalles de ${camion.placa}`)}
                                                             title="Ver detalles"
                                                         >
                                                             <i className="fas fa-eye"></i>
                                                         </button>
                                                         <button
                                                             className="btn btn-outline-warning"
-                                                            onClick={() => handleEditarCamion(camion)}
+                                                            onClick={() => alert(`Editar ${camion.placa}`)}
                                                             title="Editar"
                                                         >
                                                             <i className="fas fa-edit"></i>
                                                         </button>
                                                         <button
                                                             className="btn btn-outline-danger"
-                                                            onClick={() => handleEliminarCamion(camion)}
+                                                            onClick={() => {
+                                                                if (confirm(`¿Eliminar camión ${camion.placa}?`)) {
+                                                                    alert('Función eliminar en desarrollo');
+                                                                }
+                                                            }}
                                                             title="Eliminar"
                                                         >
                                                             <i className="fas fa-trash"></i>
@@ -430,41 +326,23 @@ const ListaCamiones = () => {
                                 </table>
                             </div>
 
-                            {/* Paginación */}
-                            {pagination.total_pages > 1 && (
+                            {/* Información de paginación */}
+                            {pagination.total_records > 0 && (
                                 <div className="d-flex justify-content-between align-items-center mt-3">
                                     <small className="text-muted">
-                                        Mostrando {pagination.records_per_page * (currentPage - 1) + 1} - {Math.min(pagination.records_per_page * currentPage, pagination.total_records)} de {pagination.total_records} camiones
+                                        Mostrando {camiones.length} de {pagination.total_records} camiones
                                     </small>
-                                    {renderPagination()}
+                                    {pagination.total_pages > 1 && (
+                                        <small className="text-muted">
+                                            Página {pagination.current_page} de {pagination.total_pages}
+                                        </small>
+                                    )}
                                 </div>
                             )}
                         </>
                     )}
                 </div>
             </div>
-
-            {/* Modal Formulario */}
-            {showFormModal && (
-                <FormularioCamion
-                    show={showFormModal}
-                    onHide={() => setShowFormModal(false)}
-                    camion={selectedCamion}
-                    isEditing={isEditing}
-                    onSuccess={handleModalSuccess}
-                />
-            )}
-
-            {/* Modal Detalle */}
-            {showDetailModal && selectedCamion && (
-                <DetalleCamion
-                    show={showDetailModal}
-                    onHide={() => setShowDetailModal(false)}
-                    camion={selectedCamion}
-                    onEdit={handleEditarCamion}
-                    onRefresh={cargarCamiones}
-                />
-            )}
         </div>
     );
 };

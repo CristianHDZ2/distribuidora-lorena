@@ -10,8 +10,9 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 try {
+    // Usar tu clase Database existente
     $database = new Database();
-    $conexion = $database->getConnection();
+    $pdo = $database->getConnection();
     
     // Obtener parámetros de consulta
     $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
@@ -51,6 +52,7 @@ try {
         $camion = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$camion) {
+            $database->closeConnection();
             http_response_code(404);
             echo json_encode(['success' => false, 'message' => 'Camión no encontrado']);
             exit;
@@ -68,12 +70,14 @@ try {
         
         // Obtener rutas asignadas
         $rutas_stmt = $pdo->prepare("
-            SELECT r.id, r.numero_ruta, r.lugar_recorrido, r.grupo_productos, r.estado
+            SELECT r.id, r.numero_ruta, r.lugar_recorrido, r.grupo_productos, r.activa
             FROM rutas r
-            WHERE r.camion_id = ? AND r.deleted_at IS NULL
+            WHERE r.camion_id = ?
         ");
         $rutas_stmt->execute([$id]);
         $camion['rutas_asignadas'] = $rutas_stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $database->closeConnection();
         
         echo json_encode([
             'success' => true,
@@ -112,7 +116,7 @@ try {
     $count_stmt->execute($params);
     $total_records = $count_stmt->fetchColumn();
     
-    // Obtener registros paginados
+    // SOLUCIÓN: Construir SQL con valores directos para LIMIT
     $sql = "
         SELECT c.id, c.placa, c.marca, c.modelo, c.anio, c.capacidad_carga,
                c.tipo_combustible, c.estado, c.created_at,
@@ -130,38 +134,40 @@ try {
                    WHEN c.tipo_combustible = 'electrico' THEN 'Eléctrico'
                    WHEN c.tipo_combustible = 'hibrido' THEN 'Híbrido'
                END as combustible_texto,
-               (SELECT COUNT(*) FROM rutas r WHERE r.camion_id = c.id AND r.deleted_at IS NULL) as rutas_asignadas,
+               (SELECT COUNT(*) FROM rutas r WHERE r.camion_id = c.id) as rutas_asignadas,
                (SELECT COUNT(*) FROM camion_fotos cf WHERE cf.camion_id = c.id) as total_fotos
         FROM camiones c
         LEFT JOIN usuarios u ON c.created_by = u.id
         WHERE $where_clause
         ORDER BY c.created_at DESC
-        LIMIT ? OFFSET ?
+        LIMIT $offset, $limit
     ";
     
-    $params[] = $limit;
-    $params[] = $offset;
-    
+    // No agregar LIMIT a los parámetros porque ya está en el SQL
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $camiones = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Obtener estadísticas para el dashboard del módulo
-    $stats_sql = "
-        SELECT 
-            COUNT(*) as total_camiones,
-            SUM(CASE WHEN estado = 'activo' THEN 1 ELSE 0 END) as camiones_activos,
-            SUM(CASE WHEN estado = 'mantenimiento' THEN 1 ELSE 0 END) as en_mantenimiento,
-            SUM(CASE WHEN estado = 'reparacion' THEN 1 ELSE 0 END) as en_reparacion,
-            SUM(CASE WHEN estado = 'inactivo' THEN 1 ELSE 0 END) as inactivos,
-            AVG(YEAR(NOW()) - anio) as edad_promedio,
-            SUM(capacidad_carga) as capacidad_total
-        FROM camiones 
-        WHERE deleted_at IS NULL
-    ";
-    
-    $stats_stmt = $pdo->query($stats_sql);
-    $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
+    // Obtener estadísticas usando la vista que ya existe
+    try {
+        $stats_stmt = $pdo->query("SELECT * FROM vista_estadisticas_camiones");
+        $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        // Si no hay vista, calcular estadísticas manualmente
+        $stats_stmt = $pdo->query("
+            SELECT 
+                COUNT(*) as total_camiones,
+                SUM(CASE WHEN estado = 'activo' THEN 1 ELSE 0 END) as camiones_activos,
+                SUM(CASE WHEN estado = 'mantenimiento' THEN 1 ELSE 0 END) as en_mantenimiento,
+                SUM(CASE WHEN estado = 'reparacion' THEN 1 ELSE 0 END) as en_reparacion,
+                SUM(CASE WHEN estado = 'inactivo' THEN 1 ELSE 0 END) as inactivos,
+                SUM(capacidad_carga) as capacidad_total,
+                COUNT(DISTINCT marca) as marcas_diferentes
+            FROM camiones 
+            WHERE deleted_at IS NULL
+        ");
+        $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
+    }
     
     // Obtener marcas más comunes
     $marcas_stmt = $pdo->query("
@@ -175,20 +181,30 @@ try {
     $marcas_populares = $marcas_stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Calcular información de paginación
-    $pagination = paginate($total_records, $limit, $page);
+    $total_pages = ceil($total_records / $limit);
+    $pagination = [
+        'total_records' => intval($total_records),
+        'total_pages' => intval($total_pages),
+        'current_page' => intval($page),
+        'records_per_page' => intval($limit),
+        'has_previous' => $page > 1,
+        'has_next' => $page < $total_pages
+    ];
+    
+    // Cerrar conexión
+    $database->closeConnection();
     
     echo json_encode([
         'success' => true,
         'data' => $camiones,
         'pagination' => $pagination,
         'stats' => [
-            'total_camiones' => intval($stats['total_camiones']),
-            'camiones_activos' => intval($stats['camiones_activos']),
-            'en_mantenimiento' => intval($stats['en_mantenimiento']),
-            'en_reparacion' => intval($stats['en_reparacion']),
-            'inactivos' => intval($stats['inactivos']),
-            'edad_promedio' => round($stats['edad_promedio'], 1),
-            'capacidad_total' => floatval($stats['capacidad_total']),
+            'total_camiones' => intval($stats['total_camiones'] ?? 0),
+            'camiones_activos' => intval($stats['camiones_activos'] ?? 0),
+            'en_mantenimiento' => intval($stats['en_mantenimiento'] ?? 0),
+            'en_reparacion' => intval($stats['en_reparacion'] ?? 0),
+            'inactivos' => intval($stats['inactivos'] ?? 0),
+            'capacidad_total' => floatval($stats['capacidad_total'] ?? 0),
             'marcas_populares' => $marcas_populares
         ],
         'filters' => [
@@ -209,11 +225,16 @@ try {
     ]);
 
 } catch (Exception $e) {
+    // Cerrar conexión en caso de error
+    if (isset($database)) {
+        $database->closeConnection();
+    }
+    
     error_log("Error listando camiones: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Error interno del servidor'
+        'message' => 'Error interno del servidor: ' . $e->getMessage()
     ]);
 }
 ?>

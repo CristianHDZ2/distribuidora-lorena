@@ -1,11 +1,12 @@
 import React from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import ProtectedRoute from '../../components/Auth/ProtectedRoute';
 import ListaCamiones from '../../components/Camiones/ListaCamiones';
 
 const CamionesPage = () => {
     return (
-        <ProtectedRoute requiredPermission="manage_trucks">
+        <ProtectedRoute>
             <Head>
                 <title>Gestión de Camiones - Distribuidora Lorena</title>
                 <meta name="description" content="Sistema de gestión de camiones para distribuidora de bebidas" />
@@ -38,9 +39,9 @@ const CamionesPage = () => {
                                     <nav aria-label="breadcrumb">
                                         <ol className="breadcrumb mb-0">
                                             <li className="breadcrumb-item">
-                                                <a href="/dashboard" className="text-decoration-none">
+                                                <Link href="/dashboard" className="text-decoration-none">
                                                     <i className="fas fa-home"></i> Dashboard
-                                                </a>
+                                                </Link>
                                             </li>
                                             <li className="breadcrumb-item active" aria-current="page">
                                                 <i className="fas fa-truck"></i> Camiones
@@ -56,20 +57,6 @@ const CamionesPage = () => {
                 {/* Main Content */}
                 <div className="container-fluid py-4">
                     <ListaCamiones />
-                </div>
-            </div>
-
-            {/* Toast Notifications */}
-            <div className="toast-container position-fixed top-0 end-0 p-3">
-                <div id="successToast" className="toast" role="alert" aria-live="assertive" aria-atomic="true">
-                    <div className="toast-header bg-success text-white">
-                        <i className="fas fa-check-circle me-2"></i>
-                        <strong className="me-auto">Éxito</strong>
-                        <button type="button" className="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-                    </div>
-                    <div className="toast-body">
-                        <span id="toastMessage">Operación completada exitosamente</span>
-                    </div>
                 </div>
             </div>
         </ProtectedRoute>
