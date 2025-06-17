@@ -321,10 +321,10 @@ function ensureUploadDirectory($path) {
     return $upload_dir;
 }
 
-// Establecer zona horaria para El Salvador
+// CORREGIDO: Establecer zona horaria para El Salvador
 date_default_timezone_set('America/El_Salvador');
 
-// Inicializar sesiones si no están iniciadas
+// CORREGIDO: Inicializar sesiones solo si no están iniciadas
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }

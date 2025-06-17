@@ -83,8 +83,10 @@ try {
     // Generar token de sesión (por simplicidad usamos un hash del ID y timestamp)
     $token = hash('sha256', $user['id'] . time() . 'distribuidora_lorena_secret');
     
-    // Iniciar sesión PHP
-    session_start();
+    // CORREGIDO: Iniciar sesión PHP solo si no está activa
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['user_type'] = $user['tipo_usuario'];
     $_SESSION['token'] = $token;
@@ -96,13 +98,7 @@ try {
     
     // Registrar actividad de login
     try {
-        $log_query = "INSERT INTO activity_logs (user_id, action, details, created_at) VALUES (?, ?, ?, NOW())";
-        $log_stmt = $db->prepare($log_query);
-        $log_stmt->execute([
-            $user['id'], 
-            'login', 
-            'Usuario inició sesión desde IP: ' . $_SERVER['REMOTE_ADDR']
-        ]);
+        logActivity($user['id'], 'login', 'Usuario inició sesión desde IP: ' . $_SERVER['REMOTE_ADDR']);
     } catch (Exception $e) {
         // Log error pero no fallar el login
         logError("Error logging login activity: " . $e->getMessage());
