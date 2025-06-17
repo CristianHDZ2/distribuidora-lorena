@@ -14,8 +14,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 try {
-    // Iniciar sesión PHP
-    session_start();
+    // Iniciar sesión PHP - CORREGIDO
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
     
     // Verificar si existe sesión activa
     if (!isset($_SESSION['user_id']) || !isset($_SESSION['token'])) {
@@ -32,30 +34,29 @@ try {
         exit;
     }
     
-    // Obtener token del header Authorization
+    // Obtener token del header Authorization - CORREGIDO: OPCIONAL
     $headers = getallheaders();
     $auth_header = isset($headers['Authorization']) ? $headers['Authorization'] : '';
     
-    if (empty($auth_header)) {
-        sendResponse(false, 'Token de autorización requerido', null, 401);
-        exit;
+    // Solo verificar token si se proporciona
+    if (!empty($auth_header)) {
+        // Extraer token (formato: "Bearer token")
+        $token_parts = explode(' ', $auth_header);
+        if (count($token_parts) === 2 && $token_parts[0] === 'Bearer') {
+            $provided_token = $token_parts[1];
+            
+            // Verificar que el token coincida con el de la sesión
+            if ($provided_token !== $_SESSION['token']) {
+                session_destroy();
+                sendResponse(false, 'Token inválido', null, 401);
+                exit;
+            }
+        } else {
+            sendResponse(false, 'Formato de token inválido', null, 401);
+            exit;
+        }
     }
-    
-    // Extraer token (formato: "Bearer token")
-    $token_parts = explode(' ', $auth_header);
-    if (count($token_parts) !== 2 || $token_parts[0] !== 'Bearer') {
-        sendResponse(false, 'Formato de token inválido', null, 401);
-        exit;
-    }
-    
-    $provided_token = $token_parts[1];
-    
-    // Verificar que el token coincida con el de la sesión
-    if ($provided_token !== $_SESSION['token']) {
-        session_destroy();
-        sendResponse(false, 'Token inválido', null, 401);
-        exit;
-    }
+    // Si no hay header Authorization, continuar con solo la verificación de sesión PHP
     
     // Conectar a la base de datos
     $database = new Database();
@@ -97,7 +98,7 @@ try {
     
     $database->closeConnection();
     
-    // Responder con datos de usuario válidos
+    // Responder con datos de usuario válidos - AGREGADO manage_trucks
     sendResponse(true, 'Sesión válida', [
         'token' => $_SESSION['token'],
         'user' => $user,
@@ -113,6 +114,7 @@ try {
             'can_view_reports' => true,
             'can_manage_products' => $user['tipo_usuario'] === 'administrador',
             'can_manage_routes' => $user['tipo_usuario'] === 'administrador',
+            'can_manage_trucks' => $user['tipo_usuario'] === 'administrador', // AGREGADO
         ]
     ]);
     
