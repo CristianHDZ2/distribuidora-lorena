@@ -1,4 +1,5 @@
 <?php
+// api/camiones/listar_camiones.php
 require_once '../config/database.php';
 
 // Verificar autenticación
@@ -9,44 +10,43 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+// Verificar método GET
+if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'message' => 'Método no permitido']);
+    exit;
+}
+
 try {
-    // Usar tu clase Database existente
     $database = new Database();
     $pdo = $database->getConnection();
     
-    // Obtener parámetros de consulta
-    $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-    $limit = isset($_GET['limit']) ? max(1, min(100, intval($_GET['limit']))) : 10;
+    // Parámetros de búsqueda y filtros
     $search = isset($_GET['search']) ? trim($_GET['search']) : '';
     $estado = isset($_GET['estado']) ? trim($_GET['estado']) : '';
     $marca = isset($_GET['marca']) ? trim($_GET['marca']) : '';
-    $id = isset($_GET['id']) ? intval($_GET['id']) : null;
+    $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
     
+    // Parámetros de paginación
+    $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
+    $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 10;
+    $page = max(1, $page);
+    $limit = min(100, max(1, $limit));
     $offset = ($page - 1) * $limit;
     
     // Si se solicita un camión específico
-    if ($id) {
+    if ($id > 0) {
         $stmt = $pdo->prepare("
             SELECT c.*, 
                    u.nombre_completo as created_by_name,
-                   uu.nombre_completo as updated_by_name,
-                   CASE 
-                       WHEN c.estado = 'activo' THEN 'Activo'
-                       WHEN c.estado = 'mantenimiento' THEN 'En Mantenimiento'
-                       WHEN c.estado = 'inactivo' THEN 'Inactivo'
-                       WHEN c.estado = 'reparacion' THEN 'En Reparación'
-                   END as estado_texto,
-                   CASE 
-                       WHEN c.tipo_combustible = 'gasolina' THEN 'Gasolina'
-                       WHEN c.tipo_combustible = 'diesel' THEN 'Diésel'
-                       WHEN c.tipo_combustible = 'gas_natural' THEN 'Gas Natural'
-                       WHEN c.tipo_combustible = 'electrico' THEN 'Eléctrico'
-                       WHEN c.tipo_combustible = 'hibrido' THEN 'Híbrido'
-                   END as combustible_texto
+                   COUNT(DISTINCT d.id) as total_despachos,
+                   MAX(d.fecha_salida) as ultima_actividad
             FROM camiones c
             LEFT JOIN usuarios u ON c.created_by = u.id
-            LEFT JOIN usuarios uu ON c.updated_by = uu.id
+            LEFT JOIN rutas r ON c.id = r.camion_id
+            LEFT JOIN despachos d ON r.id = d.ruta_id
             WHERE c.id = ? AND c.deleted_at IS NULL
+            GROUP BY c.id
         ");
         $stmt->execute([$id]);
         $camion = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -58,7 +58,7 @@ try {
             exit;
         }
         
-        // Obtener fotos del camión
+        // Obtener fotos del camión si existen
         $fotos_stmt = $pdo->prepare("
             SELECT id, nombre_archivo, ruta_archivo, tipo_foto, created_at
             FROM camion_fotos 
@@ -72,7 +72,7 @@ try {
         $rutas_stmt = $pdo->prepare("
             SELECT r.id, r.numero_ruta, r.lugar_recorrido, r.grupo_productos, r.activa
             FROM rutas r
-            WHERE r.camion_id = ?
+            WHERE r.camion_id = ? AND r.deleted_at IS NULL
         ");
         $rutas_stmt->execute([$id]);
         $camion['rutas_asignadas'] = $rutas_stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -108,58 +108,78 @@ try {
         $params[] = "%$marca%";
     }
     
-    $where_clause = implode(" AND ", $where_conditions);
+    $where_clause = implode(' AND ', $where_conditions);
     
     // Contar total de registros
-    $count_sql = "SELECT COUNT(*) FROM camiones c WHERE $where_clause";
+    $count_sql = "
+        SELECT COUNT(*) as total
+        FROM camiones c
+        WHERE $where_clause
+    ";
     $count_stmt = $pdo->prepare($count_sql);
     $count_stmt->execute($params);
     $total_records = $count_stmt->fetchColumn();
     
-    // SOLUCIÓN: Construir SQL con valores directos para LIMIT
+    // Obtener camiones con paginación
     $sql = "
-        SELECT c.id, c.placa, c.marca, c.modelo, c.anio, c.capacidad_carga,
-               c.tipo_combustible, c.estado, c.created_at,
+        SELECT c.id, c.placa, c.marca, c.modelo, c.anio, 
+               c.capacidad_carga, c.tipo_combustible, c.estado, 
+               c.descripcion, c.created_at, c.updated_at,
                u.nombre_completo as created_by_name,
-               CASE 
-                   WHEN c.estado = 'activo' THEN 'Activo'
-                   WHEN c.estado = 'mantenimiento' THEN 'En Mantenimiento'
-                   WHEN c.estado = 'inactivo' THEN 'Inactivo'
-                   WHEN c.estado = 'reparacion' THEN 'En Reparación'
-               END as estado_texto,
-               CASE 
-                   WHEN c.tipo_combustible = 'gasolina' THEN 'Gasolina'
-                   WHEN c.tipo_combustible = 'diesel' THEN 'Diésel'
-                   WHEN c.tipo_combustible = 'gas_natural' THEN 'Gas Natural'
-                   WHEN c.tipo_combustible = 'electrico' THEN 'Eléctrico'
-                   WHEN c.tipo_combustible = 'hibrido' THEN 'Híbrido'
-               END as combustible_texto,
-               (SELECT COUNT(*) FROM rutas r WHERE r.camion_id = c.id) as rutas_asignadas,
-               (SELECT COUNT(*) FROM camion_fotos cf WHERE cf.camion_id = c.id) as total_fotos
+               COUNT(DISTINCT r.id) as rutas_asignadas,
+               COUNT(DISTINCT d.id) as total_despachos,
+               MAX(d.fecha_salida) as ultima_actividad
         FROM camiones c
         LEFT JOIN usuarios u ON c.created_by = u.id
+        LEFT JOIN rutas r ON c.id = r.camion_id AND r.deleted_at IS NULL
+        LEFT JOIN despachos d ON r.id = d.ruta_id AND d.deleted_at IS NULL
         WHERE $where_clause
+        GROUP BY c.id
         ORDER BY c.created_at DESC
-        LIMIT $offset, $limit
+        LIMIT ? OFFSET ?
     ";
     
-    // No agregar LIMIT a los parámetros porque ya está en el SQL
+    $params[] = $limit;
+    $params[] = $offset;
+    
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $camiones = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Obtener estadísticas usando la vista que ya existe
-    try {
-        $stats_stmt = $pdo->query("SELECT * FROM vista_estadisticas_camiones");
-        $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {
-        // Si no hay vista, calcular estadísticas manualmente
+    // Formatear datos de camiones
+    foreach ($camiones as &$camion) {
+        $camion['id'] = intval($camion['id']);
+        $camion['anio'] = intval($camion['anio']);
+        $camion['capacidad_carga'] = floatval($camion['capacidad_carga']);
+        $camion['rutas_asignadas'] = intval($camion['rutas_asignadas']);
+        $camion['total_despachos'] = intval($camion['total_despachos']);
+        
+        // Formatear fechas
+        if ($camion['created_at']) {
+            $camion['created_at'] = date('Y-m-d H:i:s', strtotime($camion['created_at']));
+        }
+        if ($camion['updated_at']) {
+            $camion['updated_at'] = date('Y-m-d H:i:s', strtotime($camion['updated_at']));
+        }
+        if ($camion['ultima_actividad']) {
+            $camion['ultima_actividad'] = date('Y-m-d H:i:s', strtotime($camion['ultima_actividad']));
+        }
+    }
+    
+    // Obtener estadísticas generales
+    $stats = [
+        'total' => 0,
+        'activos' => 0,
+        'inactivos' => 0,
+        'en_reparacion' => 0
+    ];
+    
+    if (empty($search) && empty($estado) && empty($marca)) {
         $stats_stmt = $pdo->query("
             SELECT 
-                COUNT(*) as total_camiones,
-                SUM(CASE WHEN estado = 'activo' THEN 1 ELSE 0 END) as camiones_activos,
-                SUM(CASE WHEN estado = 'mantenimiento' THEN 1 ELSE 0 END) as en_mantenimiento,
-                SUM(CASE WHEN estado = 'reparacion' THEN 1 ELSE 0 END) as en_reparacion,
+                COUNT(*) as total,
+                SUM(CASE WHEN estado = 'activo' THEN 1 ELSE 0 END) as activos,
+                SUM(CASE WHEN estado = 'en_reparacion' THEN 1 ELSE 0 END) as en_reparacion,
                 SUM(CASE WHEN estado = 'inactivo' THEN 1 ELSE 0 END) as inactivos,
                 SUM(capacidad_carga) as capacidad_total,
                 COUNT(DISTINCT marca) as marcas_diferentes
@@ -169,16 +189,14 @@ try {
         $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
     }
     
-    // Obtener marcas más comunes
+    // Obtener marcas disponibles para filtros
     $marcas_stmt = $pdo->query("
-        SELECT marca, COUNT(*) as cantidad
+        SELECT DISTINCT marca
         FROM camiones 
         WHERE deleted_at IS NULL
-        GROUP BY marca
-        ORDER BY cantidad DESC
-        LIMIT 5
+        ORDER BY marca ASC
     ");
-    $marcas_populares = $marcas_stmt->fetchAll(PDO::FETCH_ASSOC);
+    $marcas_disponibles = $marcas_stmt->fetchAll(PDO::FETCH_COLUMN);
     
     // Calcular información de paginación
     $total_pages = ceil($total_records / $limit);
@@ -186,7 +204,7 @@ try {
         'total_records' => intval($total_records),
         'total_pages' => intval($total_pages),
         'current_page' => intval($page),
-        'records_per_page' => intval($limit),
+        'per_page' => intval($limit),
         'has_previous' => $page > 1,
         'has_next' => $page < $total_pages
     ];
@@ -199,27 +217,19 @@ try {
         'data' => $camiones,
         'pagination' => $pagination,
         'stats' => [
-            'total_camiones' => intval($stats['total_camiones'] ?? 0),
-            'camiones_activos' => intval($stats['camiones_activos'] ?? 0),
-            'en_mantenimiento' => intval($stats['en_mantenimiento'] ?? 0),
+            'total' => intval($stats['total'] ?? 0),
+            'activos' => intval($stats['activos'] ?? 0),
             'en_reparacion' => intval($stats['en_reparacion'] ?? 0),
             'inactivos' => intval($stats['inactivos'] ?? 0),
             'capacidad_total' => floatval($stats['capacidad_total'] ?? 0),
-            'marcas_populares' => $marcas_populares
+            'marcas_diferentes' => intval($stats['marcas_diferentes'] ?? 0)
         ],
         'filters' => [
+            'marcas' => $marcas_disponibles,
             'estados_disponibles' => [
                 ['value' => 'activo', 'label' => 'Activo'],
-                ['value' => 'mantenimiento', 'label' => 'En Mantenimiento'],
-                ['value' => 'reparacion', 'label' => 'En Reparación'],
+                ['value' => 'en_reparacion', 'label' => 'En Reparación'], 
                 ['value' => 'inactivo', 'label' => 'Inactivo']
-            ],
-            'combustibles_disponibles' => [
-                ['value' => 'gasolina', 'label' => 'Gasolina'],
-                ['value' => 'diesel', 'label' => 'Diésel'],
-                ['value' => 'gas_natural', 'label' => 'Gas Natural'],
-                ['value' => 'electrico', 'label' => 'Eléctrico'],
-                ['value' => 'hibrido', 'label' => 'Híbrido']
             ]
         ]
     ]);

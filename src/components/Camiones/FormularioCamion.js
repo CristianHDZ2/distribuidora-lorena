@@ -1,7 +1,8 @@
+// src/components/Camiones/FormularioCamion.js
 import React, { useState, useEffect } from 'react';
 import { camionesAPI } from '../../utils/api';
 
-const FormularioCamion = ({ show, onHide, camion, isEditing, onSuccess }) => {
+const FormularioCamion = ({ show, onHide, onSuccess, camion = null }) => {
     const [formData, setFormData] = useState({
         placa: '',
         marca: '',
@@ -15,9 +16,11 @@ const FormularioCamion = ({ show, onHide, camion, isEditing, onSuccess }) => {
     
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
+    
+    const isEditing = camion !== null;
 
     useEffect(() => {
-        if (isEditing && camion) {
+        if (camion) {
             setFormData({
                 placa: camion.placa || '',
                 marca: camion.marca || '',
@@ -29,7 +32,7 @@ const FormularioCamion = ({ show, onHide, camion, isEditing, onSuccess }) => {
                 descripcion: camion.descripcion || ''
             });
         } else {
-            // Reset form for new camion
+            // Reset form para nuevo camión
             setFormData({
                 placa: '',
                 marca: '',
@@ -42,36 +45,38 @@ const FormularioCamion = ({ show, onHide, camion, isEditing, onSuccess }) => {
             });
         }
         setErrors({});
-    }, [isEditing, camion, show]);
+    }, [camion, show]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
         
-        // Formatear placa automáticamente
-        if (name === 'placa') {
-            let formattedValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-            if (formattedValue.length > 3) {
-                formattedValue = formattedValue.slice(0, 4) + '-' + formattedValue.slice(4, 7);
-            }
-            setFormData(prev => ({ ...prev, [name]: formattedValue }));
-        } else {
-            setFormData(prev => ({ ...prev, [name]: value }));
-        }
-        
-        // Limpiar error del campo
+        // Limpiar error del campo cuando el usuario empiece a escribir
         if (errors[name]) {
-            setErrors(prev => ({ ...prev, [name]: '' }));
+            setErrors(prev => ({
+                ...prev,
+                [name]: ''
+            }));
         }
+    };
+
+    const validatePlaca = (placa) => {
+        // Validación de placa salvadoreña: formato P123456 o PP123456
+        const placaRegex = /^[A-Z]{1,2}\d{4,6}$/;
+        return placaRegex.test(placa.replace(/[^A-Z0-9]/g, ''));
     };
 
     const validateForm = () => {
         const newErrors = {};
         
         // Validar placa
-        if (!formData.placa) {
+        if (!formData.placa.trim()) {
             newErrors.placa = 'La placa es requerida';
-        } else if (!/^[A-Z]{1,2}\d{3}-\d{3}$/.test(formData.placa)) {
-            newErrors.placa = 'Formato de placa inválido (ej: P123-456)';
+        } else if (!validatePlaca(formData.placa)) {
+            newErrors.placa = 'Formato de placa inválido (ej: P123456)';
         }
         
         // Validar marca
@@ -91,9 +96,9 @@ const FormularioCamion = ({ show, onHide, camion, isEditing, onSuccess }) => {
         // Validar año
         const currentYear = new Date().getFullYear();
         const anio = parseInt(formData.anio);
-        if (!anio) {
+        if (!formData.anio) {
             newErrors.anio = 'El año es requerido';
-        } else if (anio < 1990 || anio > currentYear + 1) {
+        } else if (isNaN(anio) || anio < 1990 || anio > currentYear + 1) {
             newErrors.anio = `El año debe estar entre 1990 y ${currentYear + 1}`;
         }
         
@@ -128,16 +133,15 @@ const FormularioCamion = ({ show, onHide, camion, isEditing, onSuccess }) => {
                 response = await camionesAPI.crear(formData);
             }
             
-            if (response.success) {
-                // Toast notification
-                if (window.bootstrap) {
-                    const toast = new window.bootstrap.Toast(document.getElementById('successToast'));
-                    document.getElementById('toastMessage').textContent = response.message;
-                    toast.show();
+            if (response && response.success) {
+                // Mostrar mensaje de éxito
+                if (typeof window !== 'undefined') {
+                    // Simple alert por ahora, más tarde implementaremos toasts
+                    alert(response.message || 'Camión guardado exitosamente');
                 }
                 onSuccess();
             } else {
-                setErrors({ general: response.message || 'Error al procesar la solicitud' });
+                setErrors({ general: response?.message || 'Error al procesar la solicitud' });
             }
         } catch (error) {
             console.error('Error:', error);
@@ -153,21 +157,22 @@ const FormularioCamion = ({ show, onHide, camion, isEditing, onSuccess }) => {
         <div className="modal fade show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
             <div className="modal-dialog modal-lg">
                 <div className="modal-content">
-                    <div className="modal-header">
-                        <h5 className="modal-title">
-                            <i className="fas fa-truck me-2"></i>
-                            {isEditing ? 'Editar Camión' : 'Nuevo Camión'}
-                        </h5>
-                        <button 
-                            type="button" 
-                            className="btn-close" 
-                            onClick={onHide}
-                            disabled={loading}
-                        ></button>
-                    </div>
-                    
                     <form onSubmit={handleSubmit}>
+                        <div className="modal-header">
+                            <h5 className="modal-title">
+                                <i className="fas fa-truck me-2"></i>
+                                {isEditing ? 'Editar Camión' : 'Nuevo Camión'}
+                            </h5>
+                            <button 
+                                type="button" 
+                                className="btn-close" 
+                                onClick={onHide}
+                                disabled={loading}
+                            ></button>
+                        </div>
+                        
                         <div className="modal-body">
+                            {/* Error general */}
                             {errors.general && (
                                 <div className="alert alert-danger" role="alert">
                                     <i className="fas fa-exclamation-triangle me-2"></i>
@@ -187,16 +192,14 @@ const FormularioCamion = ({ show, onHide, camion, isEditing, onSuccess }) => {
                                         name="placa"
                                         value={formData.placa}
                                         onChange={handleChange}
-                                        placeholder="P123-456"
-                                        maxLength="8"
+                                        placeholder="P123456"
                                         disabled={loading}
+                                        maxLength="8"
+                                        style={{ textTransform: 'uppercase' }}
                                     />
                                     {errors.placa && (
                                         <div className="invalid-feedback">{errors.placa}</div>
                                     )}
-                                    <div className="form-text">
-                                        Formato: P123-456 (se formatea automáticamente)
-                                    </div>
                                 </div>
 
                                 {/* Estado */}
@@ -212,9 +215,8 @@ const FormularioCamion = ({ show, onHide, camion, isEditing, onSuccess }) => {
                                         disabled={loading}
                                     >
                                         <option value="activo">Activo</option>
-                                        <option value="mantenimiento">En Mantenimiento</option>
-                                        <option value="reparacion">En Reparación</option>
                                         <option value="inactivo">Inactivo</option>
+                                        <option value="en_reparacion">En Reparación</option>
                                     </select>
                                     {errors.estado && (
                                         <div className="invalid-feedback">{errors.estado}</div>
@@ -279,33 +281,30 @@ const FormularioCamion = ({ show, onHide, camion, isEditing, onSuccess }) => {
                                     )}
                                 </div>
 
-                                {/* Capacidad de Carga */}
+                                {/* Capacidad de carga */}
                                 <div className="col-md-6">
                                     <label className="form-label">
                                         Capacidad de Carga (Toneladas) <span className="text-danger">*</span>
                                     </label>
                                     <input
                                         type="number"
+                                        step="0.1"
                                         className={`form-control ${errors.capacidad_carga ? 'is-invalid' : ''}`}
                                         name="capacidad_carga"
                                         value={formData.capacidad_carga}
                                         onChange={handleChange}
-                                        step="0.1"
+                                        placeholder="1.5"
+                                        disabled={loading}
                                         min="0.1"
                                         max="50"
-                                        placeholder="3.5"
-                                        disabled={loading}
                                     />
                                     {errors.capacidad_carga && (
                                         <div className="invalid-feedback">{errors.capacidad_carga}</div>
                                     )}
-                                    <div className="form-text">
-                                        Capacidad máxima: 50 toneladas
-                                    </div>
                                 </div>
 
-                                {/* Tipo de Combustible */}
-                                <div className="col-12">
+                                {/* Tipo de combustible */}
+                                <div className="col-md-6">
                                     <label className="form-label">
                                         Tipo de Combustible <span className="text-danger">*</span>
                                     </label>

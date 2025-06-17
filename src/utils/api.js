@@ -3,7 +3,7 @@
 import axios from 'axios'
 import { toast } from 'react-toastify'
 
-// Configuración base de la API
+// Configuración base de la API - CORREGIDA
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
   ? 'https://tu-dominio.com/api' 
   : 'http://localhost/distribuidora-lorena/api'
@@ -269,7 +269,7 @@ export const motoristasAPI = {
   eliminar: (id) => del(`/motoristas/eliminar_motorista.php?id=${id}`),
 }
 
-// Camiones
+// Camiones - ENDPOINTS CORREGIDOS
 export const camionesAPI = {
   listar: (params) => get('/camiones/listar_camiones.php', params),
   crear: (data) => post('/camiones/crear_camion.php', data),

@@ -1,6 +1,36 @@
 <?php
 // Archivo: api/config/database.php
 
+// Configuración CORS MEJORADA
+header('Content-Type: application/json; charset=utf-8');
+
+// Origen permitidos (agregar más según necesidad)
+$allowed_origins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3001'
+];
+
+$origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
+
+if (in_array($origin, $allowed_origins)) {
+    header("Access-Control-Allow-Origin: $origin");
+} else {
+    header("Access-Control-Allow-Origin: http://localhost:3000");
+}
+
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+header('Access-Control-Allow-Credentials: true');
+header('Access-Control-Max-Age: 3600');
+
+// Manejar preflight requests
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
 class Database {
     private $host = "localhost";
     private $db_name = "distribuidora_lorena";
@@ -135,7 +165,7 @@ function getFileUrl($path) {
     
     // Si la ruta no incluye /api/uploads/, agregarla
     if (!str_contains($path, '/api/uploads/')) {
-        $path = '/api/uploads' . $path;
+        $path = '/distribuidora-lorena/api/uploads' . $path;
     }
     
     return $base_url . $path;
@@ -289,6 +319,14 @@ function ensureUploadDirectory($path) {
     }
     
     return $upload_dir;
+}
+
+// Establecer zona horaria para El Salvador
+date_default_timezone_set('America/El_Salvador');
+
+// Inicializar sesiones si no están iniciadas
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
 ?>

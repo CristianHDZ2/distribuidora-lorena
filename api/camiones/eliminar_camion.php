@@ -1,4 +1,5 @@
 <?php
+// api/camiones/eliminar_camion.php
 require_once '../config/database.php';
 
 // Verificar autenticación
@@ -32,7 +33,7 @@ try {
     }
     
     $database = new Database();
-    $conexion = $database->getConnection();
+    $pdo = $database->getConnection();
     
     // Verificar que el camión existe
     $stmt = $pdo->prepare("
@@ -83,30 +84,58 @@ try {
         ");
         $stmt->execute([$_SESSION['user_id'], $camion_id]);
         
-        // Log de actividad
-        $log_stmt = $pdo->prepare("
-            INSERT INTO logs_actividad (
-                user_id, accion, modulo, descripcion, created_at
-            ) VALUES (?, 'DELETE', 'CAMIONES', ?, NOW())
+        // Soft delete de las fotos asociadas
+        $fotos_stmt = $pdo->prepare("
+            UPDATE camion_fotos 
+            SET deleted_at = NOW(), deleted_by = ?
+            WHERE camion_id = ?
         ");
-        $log_stmt->execute([
-            $_SESSION['user_id'],
-            "Camión eliminado: {$camion['placa']} - {$camion['marca']} {$camion['modelo']}"
+        $fotos_stmt->execute([$_SESSION['user_id'], $camion_id]);
+        
+        // Registrar en log de actividades
+        $log_stmt = $pdo->prepare("
+            INSERT INTO activity_logs (
+                user_id, action, table_name, record_id, 
+                details, created_at
+            ) VALUES (?, 'DELETE', 'camiones', ?, ?, NOW())
+        ");
+        
+        $log_details = json_encode([
+            'placa' => $camion['placa'],
+            'marca' => $camion['marca'],
+            'modelo' => $camion['modelo'],
+            'estado_al_eliminar' => $camion['estado'],
+            'motivo' => 'Eliminación por administrador'
         ]);
         
+        $log_stmt->execute([
+            $_SESSION['user_id'],
+            $camion_id,
+            $log_details
+        ]);
+        
+        // Confirmar transacción
         $pdo->commit();
+        
+        // Cerrar conexión
+        $database->closeConnection();
         
         echo json_encode([
             'success' => true,
-            'message' => 'Camión eliminado exitosamente'
+            'message' => "Camión {$camion['placa']} eliminado exitosamente"
         ]);
         
     } catch (Exception $e) {
         $pdo->rollBack();
         throw $e;
     }
-
+    
 } catch (Exception $e) {
+    // Cerrar conexión en caso de error
+    if (isset($database)) {
+        $database->closeConnection();
+    }
+    
     error_log("Error eliminando camión: " . $e->getMessage());
     http_response_code(400);
     echo json_encode([
