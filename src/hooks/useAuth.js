@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }) => {
       // Verificar sesión con el servidor
       const response = await authAPI.verifySession()
       
-      if (response.success) {
+      if (response && response.success) {
         setUser(response.data.user)
         setIsLoggedIn(true)
         
@@ -56,27 +56,69 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // Función de login
+  // Función de login - CORREGIDA
   const login = async (credentials) => {
     try {
       setLoading(true)
       
+      // Debug logs
+      console.log('🚀 Iniciando login con:', credentials)
+      
       const response = await authAPI.login(credentials)
       
-      if (response.success) {
-        setUser(response.data.user)
-        setIsLoggedIn(true)
-        
-        // Guardar datos de autenticación
-        setAuthData(response.data.token, response.data.user)
-        
-        return true
+      // Debug respuesta
+      console.log('📥 Respuesta completa del servidor:', response)
+      
+      // Verificar si la respuesta existe y tiene éxito
+      if (response && response.success) {
+        // Verificar que la estructura de datos sea correcta
+        if (response.data && response.data.user && response.data.token) {
+          setUser(response.data.user)
+          setIsLoggedIn(true)
+          
+          // Guardar datos de autenticación
+          setAuthData(response.data.token, response.data.user)
+          
+          console.log('✅ Login exitoso')
+          return true
+        } else {
+          console.error('❌ Estructura de respuesta inválida:', response)
+          throw new Error('Respuesta del servidor con estructura inválida')
+        }
       } else {
-        throw new Error(response.message || 'Error al iniciar sesión')
+        console.error('❌ Login fallido:', response)
+        throw new Error(response?.message || 'Error al iniciar sesión')
       }
     } catch (error) {
-      console.error('Error en login:', error)
-      throw error
+      console.error('❌ Error completo en login:', error)
+      
+      // Determinar el mensaje de error más apropiado
+      let errorMessage = 'Error al iniciar sesión'
+      
+      if (error.response) {
+        // Error de respuesta HTTP del servidor
+        console.error('❌ Error de respuesta HTTP:', error.response)
+        
+        if (error.response.data && error.response.data.message) {
+          errorMessage = error.response.data.message
+        } else if (error.response.status === 404) {
+          errorMessage = 'Servidor no encontrado. Verifique que el backend esté funcionando.'
+        } else if (error.response.status === 500) {
+          errorMessage = 'Error interno del servidor'
+        } else if (error.response.status === 0 || error.code === 'ERR_NETWORK') {
+          errorMessage = 'No se puede conectar al servidor. Verifique que esté funcionando en http://localhost/distribuidora-lorena/api/'
+        }
+      } else if (error.request) {
+        // Error de red - no se pudo hacer la petición
+        console.error('❌ Error de red:', error.request)
+        errorMessage = 'Error de conexión. Verifique que el servidor esté funcionando en http://localhost/distribuidora-lorena/api/'
+      } else if (error.message) {
+        // Error personalizado o de validación
+        errorMessage = error.message
+      }
+      
+      // Re-lanzar el error con el mensaje apropiado
+      throw new Error(errorMessage)
     } finally {
       setLoading(false)
     }

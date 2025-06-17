@@ -81,6 +81,7 @@ const Login = () => {
     return true
   }
 
+  // FUNCIÓN CORREGIDA - Esta era la línea 101 problemática
   const handleSubmit = async (e) => {
     e.preventDefault()
     
@@ -93,15 +94,23 @@ const Login = () => {
     setSuccess('')
 
     try {
-      await login(formData)
-      setSuccess('Inicio de sesión exitoso')
+      console.log('🔐 Enviando datos de login:', formData)
       
-      // Redireccionar al dashboard
-      setTimeout(() => {
-        router.push('/dashboard')
-      }, 1000)
+      // Llamar a la función login y verificar el resultado
+      const result = await login(formData)
+      
+      if (result === true) {
+        setSuccess('Inicio de sesión exitoso')
+        
+        // Redireccionar al dashboard
+        setTimeout(() => {
+          router.push('/dashboard')
+        }, 1000)
+      } else {
+        throw new Error('Error inesperado en el login')
+      }
     } catch (error) {
-      console.error('Error de login:', error)
+      console.error('❌ Error de login en handleSubmit:', error)
       setError(error.message || 'Error al iniciar sesión')
     } finally {
       setLoading(false)

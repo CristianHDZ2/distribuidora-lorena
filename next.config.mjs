@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
   
   // Configuración de imágenes
   images: {
@@ -25,7 +24,7 @@ const nextConfig = {
     ]
   },
   
-  // Rewrites para manejar la API y mejorar el routing
+  // Rewrites para manejar la API
   async rewrites() {
     return [
       {
@@ -84,37 +83,9 @@ const nextConfig = {
     ]
   },
   
-  // Configuración de transpilación
-  transpilePackages: [],
-  
-  // Configuración de webpack para optimizaciones
-  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
-    // Mejorar la resolución de módulos
-    config.resolve.fallback = {
-      ...config.resolve.fallback,
-      fs: false,
-    }
-    
-    // Optimizaciones para desarrollo
-    if (dev) {
-      config.devtool = 'eval-source-map'
-    }
-    
-    return config
-  },
-  
-  // Configuración experimental para mejor rendimiento
-  experimental: {
-    // Usar SWC para minificación más rápida
-    swcMinify: true,
-    // Mejorar la velocidad de compilación
-    esmExternals: true,
-  },
-  
-  // Configuración del servidor de desarrollo
+  // Configuración del servidor de desarrollo limpia
   devIndicators: {
-    buildActivity: true,
-    buildActivityPosition: 'bottom-right',
+    buildActivity: false, // Desactivar para evitar warnings
   },
   
   // Configuración de compresión
@@ -123,15 +94,9 @@ const nextConfig = {
   // Configuración de páginas estáticas
   trailingSlash: false,
   
-  // Configuración de salida para producción
-  output: 'standalone',
-  
-  // Configuración de optimizaciones
-  optimizeFonts: true,
-  
-  // Configuración de API routes timeout
-  serverRuntimeConfig: {
-    apiTimeout: 30000, // 30 segundos
+  // Configuración experimental limpia
+  experimental: {
+    // Solo opciones válidas para tu versión de Next.js
   },
   
   // Configuración de variables públicas en runtime
