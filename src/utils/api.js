@@ -260,7 +260,7 @@ export const usuariosAPI = {
   subirFoto: (formData) => uploadFile('/usuarios/upload_foto.php', formData),
 }
 
-// Motoristas
+// Motoristas - CONFIGURACIÓN CORREGIDA Y COMPLETA
 export const motoristasAPI = {
   listar: (params) => get('/motoristas/listar_motoristas.php', params),
   crear: (data) => post('/motoristas/crear_motorista.php', data),
