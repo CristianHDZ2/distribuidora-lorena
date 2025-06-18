@@ -279,7 +279,7 @@ export const camionesAPI = {
   subirFotos: (formData) => uploadFile('/camiones/upload_fotos.php', formData),
 }
 
-// Rutas
+// Rutas - CONFIGURACIÓN COMPLETA
 export const rutasAPI = {
   listar: (params) => get('/rutas/listar_rutas.php', params),
   crear: (data) => post('/rutas/crear_ruta.php', data),
