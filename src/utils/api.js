@@ -269,7 +269,7 @@ export const motoristasAPI = {
   eliminar: (id) => del(`/motoristas/eliminar_motorista.php?id=${id}`),
 }
 
-// Camiones - ENDPOINTS CORREGIDOS
+// Camiones - CONFIGURACIÓN CORREGIDA Y COMPLETA
 export const camionesAPI = {
   listar: (params) => get('/camiones/listar_camiones.php', params),
   crear: (data) => post('/camiones/crear_camion.php', data),
