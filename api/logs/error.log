@@ -44,3 +44,4 @@
 [2025-06-18 19:40:50] Error logging logout activity: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'distribuidora_lorena.activity_logs' doesn't exist
 [2025-06-18 19:40:51] Error logging activity: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'distribuidora_lorena.activity_logs' doesn't exist
 [2025-06-18 20:49:14] Error logging activity: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'distribuidora_lorena.activity_logs' doesn't exist
+[2025-06-18 21:56:17] Error logging activity: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'distribuidora_lorena.activity_logs' doesn't exist
